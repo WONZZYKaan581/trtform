@@ -1,0 +1,13 @@
+Geliştirici 1 için Veritabanı ve Mimari Gereksinimleri:
+
+1. Veritabanı Tabloları:
+   - Users (id, username, password, role)
+   - Surveys (id, name, description, created_by)
+   - Questions (id, survey_id, text, type)
+   - Options (id, question_id, option_text) -> Çoktan seçmeli şıklar için
+   - Answers (id, survey_id, question_id, answer_text) -> Katılımcı yanıtları için
+
+2. Beklentiler:
+   - Frontend tarafındaki DTO yapıları ve geçici statik servisler (SurveyService, QuestionService, ParticipationService) PostgreSQL / MySQL veritabanı ile kalıcı hale getirilecek.
+   - Kullanıcı yetkilendirme (Giriş yapma, anket oluşturma yetkileri) backend tarafındaki Spring Security veya JWT yapılarıyla güvenli hale getirilecek.
+   - Anket düzenleme, soru silme ve sonuçları listeleme endpoint'leri (REST API) hazırlanacak.
