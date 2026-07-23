@@ -14,18 +14,27 @@ import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.component.notification.Notification;
 
-@Route("manage-questions")
+import java.util.ArrayList;
+import java.util.List;
+
+@Route("manage-questions/1")
 @PageTitle("Soruları Yönet | Dinamik Anket")
-public class ManageQuestionsView extends VerticalLayout implements HasUrlParameter<Long> {
+public class ManageQuestionsView extends VerticalLayout implements BeforeEnterObserver {
+    
 
     private Long surveyId;
     private Grid<QuestionService.QuestionDto> questionGrid;
 
     @Override
-    public void setParameter(BeforeEvent event, Long parameter) {
-        this.surveyId = parameter;
-        refreshGrid();
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (UserService.getLoggedInUser() == null) {
+            Notification.show("Bu sayfaya erişmek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
+            event.forwardTo("login"); // Giriş sayfasına veya anasayfaya yönlendirir
+        }
     }
 
     public ManageQuestionsView() {
@@ -51,9 +60,16 @@ public class ManageQuestionsView extends VerticalLayout implements HasUrlParamet
                 editField.setWidthFull();
                 dialogLayout.add(editField);
 
-                // Eğer soru çoktan seçmeliyse seçenekleri de düzenleme alanı ekleyelim
+                List<TextField> optionTextFields = new ArrayList<>();
                 VerticalLayout optionsLayout = new VerticalLayout();
-                if ("Çoktan Seçmeli".equals(question.getType())) {
+
+                boolean hasOptions = "Çoktan Seçmeli".equals(question.getType()) || 
+                                     "Onay Kutuları".equals(question.getType()) || 
+                                     "Açılır Menü".equals(question.getType());
+
+                boolean isScale = "Doğrusal Ölçek".equals(question.getType());
+
+                if (hasOptions) {
                     optionsLayout.add(new H4("Seçenekler:"));
                     
                     if (question.getOptions() != null) {
@@ -61,12 +77,13 @@ public class ManageQuestionsView extends VerticalLayout implements HasUrlParamet
                             final int index = i;
                             TextField optField = new TextField();
                             optField.setValue(question.getOptions().get(i));
+                            optionTextFields.add(optField);
                             
                             Button removeOptBtn = new Button("Sil");
                             removeOptBtn.addClickListener(remEvent -> {
                                 question.getOptions().remove(index);
                                 editDialog.close();
-                                editBtn.click(); // Pencereyi yenilemek için tekrar tetikle
+                                editBtn.click(); // Pencereyi yenile
                             });
                             removeOptBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
 
@@ -76,7 +93,6 @@ public class ManageQuestionsView extends VerticalLayout implements HasUrlParamet
                         }
                     }
 
-                    // Yeni seçenek ekleme
                     TextField newOptField = new TextField();
                     newOptField.setPlaceholder("Yeni seçenek ekle...");
                     
@@ -84,8 +100,7 @@ public class ManageQuestionsView extends VerticalLayout implements HasUrlParamet
                     addOptBtn.addClickListener(addEvent -> {
                         if (!newOptField.isEmpty()) {
                             if (question.getOptions() == null) {
-                                // Eğer liste boşsa başlat
-                                // (QuestionDto içinde options null olmasın diye)
+                                question.setOptions(new ArrayList<>());
                             }
                             question.getOptions().add(newOptField.getValue());
                             editDialog.close();
@@ -96,6 +111,24 @@ public class ManageQuestionsView extends VerticalLayout implements HasUrlParamet
                     
                     HorizontalLayout addOptRow = new HorizontalLayout(newOptField, addOptBtn);
                     optionsLayout.add(addOptRow);
+                } 
+                else if (isScale) {
+                    optionsLayout.add(new H4("Ölçek Aralıkları:"));
+                    
+                    TextField minField = new TextField("Başlangıç Değeri");
+                    TextField maxField = new TextField("Bitiş Değeri");
+                    
+                    if (question.getOptions() != null && question.getOptions().size() >= 2) {
+                        minField.setValue(question.getOptions().get(0));
+                        maxField.setValue(question.getOptions().get(1));
+                    } else {
+                        minField.setValue("1");
+                        maxField.setValue("5");
+                    }
+                    
+                    optionTextFields.add(minField);
+                    optionTextFields.add(maxField);
+                    optionsLayout.add(minField, maxField);
                 }
                 
                 dialogLayout.add(optionsLayout);
@@ -106,7 +139,19 @@ public class ManageQuestionsView extends VerticalLayout implements HasUrlParamet
                         Notification.show("Soru metni boş olamaz!", 2000, Notification.Position.MIDDLE);
                         return;
                     }
-                    QuestionService.updateQuestion(question.getId(), editField.getValue());
+
+                    List<String> updatedOptions = new ArrayList<>();
+                    for (TextField tf : optionTextFields) {
+                        if (tf != null && !tf.isEmpty()) {
+                            updatedOptions.add(tf.getValue());
+                        }
+                    }
+                    
+                    if (hasOptions && question.getOptions() != null && !question.getOptions().isEmpty() && updatedOptions.isEmpty()) {
+                        updatedOptions = question.getOptions(); 
+                    }
+
+                    QuestionService.updateQuestion(question.getId(), editField.getValue(), updatedOptions);
                     refreshGrid();
                     Notification.show("Soru ve seçenekler güncellendi.", 2000, Notification.Position.MIDDLE);
                     editDialog.close();

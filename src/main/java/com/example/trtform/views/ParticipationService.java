@@ -7,8 +7,8 @@ import java.util.stream.Collectors;
 public class ParticipationService {
     private static final List<AnswerDto> answers = new ArrayList<>();
 
-    public static void saveAnswer(Long surveyId, Long questionId, String answerText) {
-        answers.add(new AnswerDto(surveyId, questionId, answerText));
+    public static void saveAnswer(Long surveyId, Long questionId, String answerText, String participantName) {
+        answers.add(new AnswerDto(surveyId, questionId, answerText, participantName));
     }
 
     public static List<AnswerDto> getAnswersBySurveyId(Long surveyId) {
@@ -21,15 +21,18 @@ public class ParticipationService {
         private Long surveyId;
         private Long questionId;
         private String answerText;
+        private String participantName;
 
-        public AnswerDto(Long surveyId, Long questionId, String answerText) {
+        public AnswerDto(Long surveyId, Long questionId, String answerText, String participantName) {
             this.surveyId = surveyId;
             this.questionId = questionId;
             this.answerText = answerText;
+            this.participantName = participantName;
         }
 
         public Long getSurveyId() { return surveyId; }
         public Long getQuestionId() { return questionId; }
         public String getAnswerText() { return answerText; }
+        public String getParticipantName() { return participantName; }
     }
 }

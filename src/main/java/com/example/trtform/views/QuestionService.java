@@ -6,15 +6,10 @@ import java.util.stream.Collectors;
 
 public class QuestionService {
     private static final List<QuestionDto> questions = new ArrayList<>();
-    private static long idCounter = 1;
-
-    static {
-        questions.add(new QuestionDto(idCounter++, 1L, "Bu ürünü diğer arkadaşlarınıza tavsiye eder misiniz?", "Çoktan Seçmeli", List.of("Kalite", "Fiyat", "Hızlı Teslimat", "Paketleme")));
-        questions.add(new QuestionDto(idCounter++, 1L, "Ürün hakkında başka bir yorum var mı?", "Metin Alanı", new ArrayList<>()));
-    }
 
     public static void addQuestion(Long surveyId, String text, String type, List<String> options) {
-        questions.add(new QuestionDto(idCounter++, surveyId, text, type, options));
+        Long id = (long) (questions.size() + 1);
+        questions.add(new QuestionDto(id, surveyId, text, type, options != null ? options : new ArrayList<>()));
     }
 
     public static List<QuestionDto> getQuestionsBySurveyId(Long surveyId) {
@@ -27,10 +22,14 @@ public class QuestionService {
         questions.removeIf(q -> q.getId().equals(questionId));
     }
 
-    public static void updateQuestion(Long questionId, String newText) {
+    // Soruyu ve seçenekleri güncelleyen metot
+    public static void updateQuestion(Long questionId, String newText, List<String> newOptions) {
         for (QuestionDto q : questions) {
             if (q.getId().equals(questionId)) {
                 q.setText(newText);
+                if (newOptions != null) {
+                    q.setOptions(newOptions);
+                }
                 break;
             }
         }
@@ -58,6 +57,9 @@ public class QuestionService {
         public void setText(String text) { this.text = text; }
 
         public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+
         public List<String> getOptions() { return options; }
+        public void setOptions(List<String> options) { this.options = options; }
     }
 }

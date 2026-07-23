@@ -17,6 +17,12 @@ public class RegisterView extends VerticalLayout {
     public RegisterView() {
         H2 title = new H2("Kayıt Ol");
 
+        TextField firstNameField = new TextField("Ad");
+        firstNameField.setWidthFull();
+
+        TextField lastNameField = new TextField("Soyad");
+        lastNameField.setWidthFull();
+
         TextField usernameField = new TextField("Kullanıcı Adı");
         usernameField.setWidthFull();
 
@@ -24,12 +30,18 @@ public class RegisterView extends VerticalLayout {
         passwordField.setWidthFull();
 
         Button registerButton = new Button("Kayıt Ol", event -> {
-            if (usernameField.isEmpty() || passwordField.isEmpty()) {
-                Notification.show("Alanlar boş bırakılamaz!", 3000, Notification.Position.MIDDLE);
+            if (firstNameField.isEmpty() || lastNameField.isEmpty() || usernameField.isEmpty() || passwordField.isEmpty()) {
+                Notification.show("Tüm alanlar doldurulmalıdır!", 3000, Notification.Position.MIDDLE);
                 return;
             }
 
-            boolean created = UserService.register(usernameField.getValue(), passwordField.getValue());
+            boolean created = UserService.register(
+                usernameField.getValue(), 
+                passwordField.getValue(), 
+                firstNameField.getValue(), 
+                lastNameField.getValue()
+            );
+            
             if (created) {
                 Notification.show("Kayıt başarılı! Giriş yapabilirsiniz.", 3000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.navigate("login"));
@@ -45,7 +57,7 @@ public class RegisterView extends VerticalLayout {
         });
         loginRedirectButton.setWidthFull();
 
-        VerticalLayout formLayout = new VerticalLayout(title, usernameField, passwordField, registerButton, loginRedirectButton);
+        VerticalLayout formLayout = new VerticalLayout(title, firstNameField, lastNameField, usernameField, passwordField, registerButton, loginRedirectButton);
         formLayout.setWidth("400px");
         formLayout.setAlignItems(Alignment.STRETCH);
         formLayout.setPadding(true);
@@ -53,7 +65,6 @@ public class RegisterView extends VerticalLayout {
         formLayout.getStyle().set("border-radius", "8px");
         formLayout.getStyle().set("box-shadow", "var(--lumo-box-shadow-m)");
 
-        // Sayfayı tam ortala
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);

@@ -76,23 +76,31 @@ public class MainView extends VerticalLayout {
 
         // Düzenle, Sorular, Sonuçlar ve Sil butonlarını içeren İşlemler Kolonu
         surveyGrid.addComponentColumn(survey -> {
+            HorizontalLayout rowButtons = new HorizontalLayout();
+
             Button editSurveyBtn = new Button("Düzenle");
             editSurveyBtn.addClickListener(e -> {
-                getUI().ifPresent(ui -> ui.navigate(EditSurveyView.class, survey.getId()));
+                getUI().ifPresent(ui -> ui.navigate("edit-survey/" + survey.getId()));
             });
             editSurveyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
 
             Button manageQuestionsBtn = new Button("Sorular");
             manageQuestionsBtn.addClickListener(e -> {
-                getUI().ifPresent(ui -> ui.navigate(ManageQuestionsView.class, survey.getId()));
+                getUI().ifPresent(ui -> ui.navigate("manage-questions/" + survey.getId()));
             });
             manageQuestionsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
 
-            Button resultsBtn = new Button("Sonuçlar");
-            resultsBtn.addClickListener(e -> {
-                getUI().ifPresent(ui -> ui.navigate(SurveyResultsView.class, survey.getId()));
-            });
-            resultsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
+            rowButtons.add(editSurveyBtn, manageQuestionsBtn);
+
+            // KONTROL: Sadece giriş yapmış kullanıcılar sonuçları görebilsin 
+            if (UserService.getLoggedInUser() != null) {
+                Button resultsBtn = new Button("Sonuçlar");
+                resultsBtn.addClickListener(e -> {
+                    getUI().ifPresent(ui -> ui.navigate("survey-results/" + survey.getId()));
+                });
+                resultsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
+                rowButtons.add(resultsBtn);
+            }
 
             Button deleteBtn = new Button("Sil");
             deleteBtn.addClickListener(e -> {
@@ -102,7 +110,9 @@ public class MainView extends VerticalLayout {
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
 
-            return new HorizontalLayout(editSurveyBtn, manageQuestionsBtn, resultsBtn, deleteBtn);
+            rowButtons.add(deleteBtn);
+
+            return rowButtons;
         }).setHeader("İşlemler");
 
         // Tablodaki bir satıra tıklandığında ankete katılım sayfasına git
@@ -139,11 +149,13 @@ public class MainView extends VerticalLayout {
         private Long id;
         private String name;
         private String description;
+        private String creator; // İleride anket sahibi kontrolü için
 
         public SurveyDto(Long id, String name, String description) {
             this.id = id;
             this.name = name;
             this.description = description;
+            this.creator = "admin"; // Varsayılan oluşturan
         }
 
         public Long getId() { return id; }
@@ -153,5 +165,8 @@ public class MainView extends VerticalLayout {
 
         public String getDescription() { return description; }
         public void setDescription(String description) { this.description = description; }
+
+        public String getCreator() { return creator; }
+        public void setCreator(String creator) { this.creator = creator; }
     }
 }

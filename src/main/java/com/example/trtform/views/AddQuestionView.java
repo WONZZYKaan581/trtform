@@ -10,16 +10,27 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.BeforeEnterObserver;
+import com.vaadin.flow.router.BeforeEnterEvent;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Route("add-question")
 @PageTitle("Soru Ekle | Dinamik Anket")
-public class AddQuestionView extends VerticalLayout {
+public class AddQuestionView extends VerticalLayout implements BeforeEnterObserver {
 
-    private final VerticalLayout optionsLayout = new VerticalLayout();
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        // Eğer giriş yapılmamışsa veya admin değilse anasayfaya yönlendir
+        if (UserService.getLoggedInUser() == null) {
+            Notification.show("Bu sayfaya erişmek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
+            event.forwardTo("login");
+        }
+    }
+
     private final List<TextField> optionFields = new ArrayList<>();
+    private final VerticalLayout optionsLayout = new VerticalLayout();
 
     public AddQuestionView() {
         H2 title = new H2("Ankete Soru Ekle");
@@ -32,12 +43,19 @@ public class AddQuestionView extends VerticalLayout {
 
         // Soru Metni
         TextField questionTextField = new TextField("Soru Metni");
-        questionTextField.setPlaceholder("Örn: Bu ürünü tavsiye eder misiniz?");
+        questionTextField.setPlaceholder("Örn: Bu etkinliği nasıl buldunuz?");
         questionTextField.setWidthFull();
 
-        // Soru Türü Seçimi
+        // Soru Türü Seçimi (Tüm Google Formlar Tipleri Eklendi)
         ComboBox<String> questionTypeBox = new ComboBox<>("Soru Türü");
-        questionTypeBox.setItems("Çoktan Seçmeli", "Metin Alanı");
+        questionTypeBox.setItems(
+            "Çoktan Seçmeli", 
+            "Onay Kutuları", 
+            "Açılır Menü", 
+            "Doğrusal Ölçek", 
+            "Kısa Yanıt", 
+            "Paragraf"
+        );
         questionTypeBox.setValue("Çoktan Seçmeli");
         questionTypeBox.setWidthFull();
 
@@ -52,14 +70,46 @@ public class AddQuestionView extends VerticalLayout {
         });
         addOptionButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
 
-        // Soru türü değiştiğinde seçenek kutularını göster/gizle
+        // Soru türü değiştiğinde dinamik alan ayarları
         questionTypeBox.addValueChangeListener(event -> {
-            boolean isMultiple = "Çoktan Seçmeli".equals(event.getValue());
-            optionsLayout.setVisible(isMultiple);
-            addOptionButton.setVisible(isMultiple);
+            String selectedType = event.getValue();
+            optionsLayout.removeAll();
+            optionFields.clear();
+
+            boolean needsOptions = "Çoktan Seçmeli".equals(selectedType) || 
+                                   "Onay Kutuları".equals(selectedType) || 
+                                   "Açılır Menü".equals(selectedType);
+
+            boolean isScale = "Doğrusal Ölçek".equals(selectedType);
+
+            optionsLayout.setVisible(needsOptions || isScale);
+            addOptionButton.setVisible(needsOptions);
+
+            if (needsOptions) {
+                // Varsayılan 2 seçenek kutusu ekle
+                for (int i = 0; i < 2; i++) {
+                    TextField opt = new TextField("Seçenek " + (i + 1));
+                    opt.setWidthFull();
+                    optionFields.add(opt);
+                    optionsLayout.add(opt);
+                }
+            } else if (isScale) {
+                // Ölçek için varsayılan değerler (Örn: 1 ile 5 arası)
+                TextField minField = new TextField("Başlangıç Değeri (Genelde 1)");
+                minField.setValue("1");
+                minField.setWidthFull();
+                
+                TextField maxField = new TextField("Bitiş Değeri (Örn: 5 veya 10)");
+                maxField.setValue("5");
+                maxField.setWidthFull();
+
+                optionFields.add(minField);
+                optionFields.add(maxField);
+                optionsLayout.add(minField, maxField);
+            }
         });
 
-        // Başlangıçta 2 tane varsayılan seçenek kutusu ekle
+        // Başlangıçta (Çoktan Seçmeli için) 2 tane varsayılan seçenek kutusu ekle
         for (int i = 0; i < 2; i++) {
             TextField opt = new TextField("Seçenek " + (i + 1));
             opt.setWidthFull();
@@ -79,15 +129,13 @@ public class AddQuestionView extends VerticalLayout {
             String qType = questionTypeBox.getValue();
             
             List<String> optionsList = new ArrayList<>();
-            if ("Çoktan Seçmeli".equals(qType)) {
-                for (TextField tf : optionFields) {
-                    if (tf != null && !tf.isEmpty()) {
-                        optionsList.add(tf.getValue());
-                    }
+            for (TextField tf : optionFields) {
+                if (tf != null && !tf.isEmpty()) {
+                    optionsList.add(tf.getValue());
                 }
             }
 
-            // Soruyu ve seçenekleri servise kaydet
+            // Soruyu ve seçenekleri/ölçeği servise kaydet
             QuestionService.addQuestion(selectedSurveyId, qText, qType, optionsList);
 
             Notification.show("Soru başarıyla eklendi!", 3000, Notification.Position.MIDDLE);

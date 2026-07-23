@@ -4,11 +4,14 @@ import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.CheckboxGroup;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.TextArea;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.PageTitle;
@@ -23,8 +26,6 @@ public class ParticipateSurveyView extends VerticalLayout implements HasUrlParam
 
     private final VerticalLayout contentLayout = new VerticalLayout();
     private Long surveyId;
-    
-    // Soru ID'leri ile bileşenleri eşleştirmek için liste tutalım
     private final List<QuestionAnswerComponent> questionComponents = new ArrayList<>();
 
     @Override
@@ -52,13 +53,60 @@ public class ParticipateSurveyView extends VerticalLayout implements HasUrlParam
                 contentLayout.add(qText);
 
                 if ("Çoktan Seçmeli".equals(q.getType())) {
+                    RadioButtonGroup<String> radioGroup = new RadioButtonGroup<>();
+                    radioGroup.setItems(q.getOptions());
+                    contentLayout.add(radioGroup);
+                    questionComponents.add(new QuestionAnswerComponent(q.getId(), radioGroup));
+                } 
+                else if ("Onay Kutuları".equals(q.getType())) {
                     CheckboxGroup<String> checkboxGroup = new CheckboxGroup<>();
                     checkboxGroup.setItems(q.getOptions());
                     contentLayout.add(checkboxGroup);
                     questionComponents.add(new QuestionAnswerComponent(q.getId(), checkboxGroup));
-                } else if ("Metin Alanı".equals(q.getType())) {
+                } 
+                else if ("Açılır Menü".equals(q.getType())) {
+                    ComboBox<String> comboBox = new ComboBox<>();
+                    comboBox.setItems(q.getOptions());
+                    comboBox.setPlaceholder("Seçiniz...");
+                    comboBox.setWidthFull();
+                    contentLayout.add(comboBox);
+                    questionComponents.add(new QuestionAnswerComponent(q.getId(), comboBox));
+                } 
+               else if ("Doğrusal Ölçek".equals(q.getType())) {
+    List<String> scaleOpts = new ArrayList<>();
+    if (q.getOptions() != null && q.getOptions().size() >= 2) {
+        try {
+            int min = Integer.parseInt(q.getOptions().get(0));
+            int max = Integer.parseInt(q.getOptions().get(1));
+            for (int i = min; i <= max; i++) {
+                scaleOpts.add(String.valueOf(i));
+            }
+        } catch (Exception e) {
+            scaleOpts = q.getOptions();
+        }
+    } else {
+        scaleOpts = List.of("1", "2", "3", "4", "5");
+    }
+
+    // Yatay görünüm için RadioButtonGroup yerine yan yana dizilen RadioButton'lar veya HorizontalLayout kullanıyoruz
+    RadioButtonGroup<String> scaleGroup = new RadioButtonGroup<>();
+    scaleGroup.setItems(scaleOpts);
+    // Vaadin'de yatay hizalama için theme variant ekleyebiliriz veya HorizontalLayout içine koyabiliriz:
+    scaleGroup.addThemeName("horizontal"); // Yatay düzen teması
+    
+    contentLayout.add(scaleGroup);
+    questionComponents.add(new QuestionAnswerComponent(q.getId(), scaleGroup));
+}
+                else if ("Kısa Yanıt".equals(q.getType())) {
+                    TextField textField = new TextField();
+                    textField.setPlaceholder("Cevabınızı buraya yazın...");
+                    textField.setWidthFull();
+                    contentLayout.add(textField);
+                    questionComponents.add(new QuestionAnswerComponent(q.getId(), textField));
+                } 
+                else if ("Paragraf".equals(q.getType())) {
                     TextArea textArea = new TextArea();
-                    textArea.setPlaceholder("Cevabınızı buraya yazın...");
+                    textArea.setPlaceholder("Detaylı cevabınızı buraya yazın...");
                     textArea.setWidthFull();
                     contentLayout.add(textArea);
                     questionComponents.add(new QuestionAnswerComponent(q.getId(), textArea));
@@ -69,19 +117,34 @@ public class ParticipateSurveyView extends VerticalLayout implements HasUrlParam
 
         Button submitButton = new Button("Anketi Gönder");
         submitButton.addClickListener(event -> {
-            // Yanıtları kaydet
+            String respondentName = UserService.getLoggedInUserFullName();
+            
             for (QuestionAnswerComponent qa : questionComponents) {
                 String answerValue = "";
-                if (qa.component instanceof CheckboxGroup) {
+                
+                if (qa.component instanceof RadioButtonGroup) {
+                    RadioButtonGroup<?> rb = (RadioButtonGroup<?>) qa.component;
+                    if (rb.getValue() != null) {
+                        answerValue = rb.getValue().toString();
+                    }
+                } else if (qa.component instanceof CheckboxGroup) {
                     CheckboxGroup<?> cb = (CheckboxGroup<?>) qa.component;
-                    answerValue = cb.getValue().toString(); // Seçilen şıklar
+                    answerValue = cb.getValue().toString();
+                } else if (qa.component instanceof ComboBox) {
+                    ComboBox<?> cmb = (ComboBox<?>) qa.component;
+                    if (cmb.getValue() != null) {
+                        answerValue = cmb.getValue().toString();
+                    }
+                } else if (qa.component instanceof TextField) {
+                    TextField tf = (TextField) qa.component;
+                    answerValue = tf.getValue();
                 } else if (qa.component instanceof TextArea) {
                     TextArea ta = (TextArea) qa.component;
-                    answerValue = ta.getValue(); // Girilen metin
+                    answerValue = ta.getValue();
                 }
                 
                 if (answerValue != null && !answerValue.isEmpty() && !answerValue.equals("[]")) {
-                    ParticipationService.saveAnswer(surveyId, qa.questionId, answerValue);
+                    ParticipationService.saveAnswer(surveyId, qa.questionId, answerValue, respondentName);
                 }
             }
 
@@ -113,7 +176,6 @@ public class ParticipateSurveyView extends VerticalLayout implements HasUrlParam
         }
     }
 
-    // Yardımcı sınıf: Soru ID ile arayüz bileşenini eşleştirmek için
     private static class QuestionAnswerComponent {
         private Long questionId;
         private Component component;

@@ -4,33 +4,26 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class UserService {
-    // Kullanıcı adı -> Şifre tutan geçici hafıza
-    private static final Map<String, String> users = new HashMap<>();
     private static String loggedInUser = null;
-    private static String userRole = "KATILIMCI"; // Varsayılan rol
+    private static final Map<String, UserProfile> users = new HashMap<>();
 
     static {
-        // Test için hazır bir admin hesabı ekleyelim
-        users.put("admin", "1234");
+        // Test için varsayılan kullanıcı
+        users.put("admin", new UserProfile("admin", "123", "Admin", "User"));
     }
 
-    public static boolean register(String username, String password) {
+    public static boolean register(String username, String password, String firstName, String lastName) {
         if (users.containsKey(username)) {
-            return false; // Bu kullanıcı zaten var
+            return false;
         }
-        users.put(username, password);
+        users.put(username, new UserProfile(username, password, firstName, lastName));
         return true;
     }
 
     public static boolean login(String username, String password) {
-        if (users.containsKey(username) && users.get(username).equals(password)) {
+        UserProfile user = users.get(username);
+        if (user != null && user.getPassword().equals(password)) {
             loggedInUser = username;
-            // "admin" ile başlayanlar veya direkt admin ise rolü ADMIN yapalım
-            if (username.equals("admin")) {
-                userRole = "ADMIN";
-            } else {
-                userRole = "KATILIMCI";
-            }
             return true;
         }
         return false;
@@ -38,14 +31,40 @@ public class UserService {
 
     public static void logout() {
         loggedInUser = null;
-        userRole = "KATILIMCI";
     }
 
     public static String getLoggedInUser() {
         return loggedInUser;
     }
 
-    public static boolean isAdmin() {
-        return "ADMIN".equals(userRole);
+    public static String getLoggedInUserFullName() {
+        if (loggedInUser == null) return "Misafir";
+        UserProfile user = users.get(loggedInUser);
+        return user != null ? user.getFirstName() + " " + user.getLastName() : loggedInUser;
     }
+
+    public static class UserProfile {
+        private String username;
+        private String password;
+        private String firstName;
+        private String lastName;
+
+        public UserProfile(String username, String password, String firstName, String lastName) {
+            this.username = username;
+            this.password = password;
+            this.firstName = firstName;
+            this.lastName = lastName;
+        }
+
+        public String getUsername() { return username; }
+        public String getPassword() { return password; }
+        public String getFirstName() { return firstName; }
+        public String getLastName() { return lastName; }
+    }
+
+    public static boolean isAdmin() {
+    if (loggedInUser == null) return false;
+    // Örneğin "admin" kullanıcı adını admin kabul edelim veya kullanıcı profiline rol ekleyebiliriz
+    return "admin".equals(loggedInUser);
+}
 }
