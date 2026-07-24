@@ -10,43 +10,37 @@ import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.component.notification.Notification;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Route("manage-questions/1")
+@Route("manage-questions")
 @PageTitle("Soruları Yönet | Dinamik Anket")
-public class ManageQuestionsView extends VerticalLayout implements BeforeEnterObserver {
-    
+public class ManageQuestionsView extends VerticalLayout implements BeforeEnterObserver, HasUrlParameter<Long> {
 
+    private final UserService userService;
+    private final QuestionService questionService;
     private Long surveyId;
     private Grid<QuestionService.QuestionDto> questionGrid;
 
-    @Override
-    public void beforeEnter(BeforeEnterEvent event) {
-        if (UserService.getLoggedInUser() == null) {
-            Notification.show("Bu sayfaya erişmek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
-            event.forwardTo("login"); // Giriş sayfasına veya anasayfaya yönlendirir
-        }
-    }
+    public ManageQuestionsView(UserService userService, QuestionService questionService) {
+        this.userService = userService;
+        this.questionService = questionService;
 
-    public ManageQuestionsView() {
         H2 title = new H2("Anket Sorularını Düzenle / Sil");
 
         questionGrid = new Grid<>(QuestionService.QuestionDto.class);
         questionGrid.removeAllColumns();
 
-        questionGrid.addColumn(QuestionService.QuestionDto::getText).setHeader("Soru Metni");
-        questionGrid.addColumn(QuestionService.QuestionDto::getType).setHeader("Soru Türü");
+        questionGrid.addColumn(question -> question.getText()).setHeader("Soru Metni");
+        questionGrid.addColumn(question -> question.getType()).setHeader("Soru Türü");
 
-        // Düzenle ve Sil Butonları
         questionGrid.addComponentColumn(question -> {
             Button editBtn = new Button("Düzenle");
             editBtn.addClickListener(e -> {
@@ -54,70 +48,39 @@ public class ManageQuestionsView extends VerticalLayout implements BeforeEnterOb
                 editDialog.setHeaderTitle("Soruyu ve Seçenekleri Düzenle");
 
                 VerticalLayout dialogLayout = new VerticalLayout();
-                
+
                 TextField editField = new TextField("Soru Metni");
-                editField.setValue(question.getText());
+                editField.setValue(question.getText() != null ? question.getText() : "");
                 editField.setWidthFull();
                 dialogLayout.add(editField);
 
                 List<TextField> optionTextFields = new ArrayList<>();
                 VerticalLayout optionsLayout = new VerticalLayout();
 
-                boolean hasOptions = "Çoktan Seçmeli".equals(question.getType()) || 
-                                     "Onay Kutuları".equals(question.getType()) || 
-                                     "Açılır Menü".equals(question.getType());
+                boolean hasOptions = "Çoktan Seçmeli".equals(question.getType())
+                        || "Onay Kutuları".equals(question.getType())
+                        || "Açılır Menü".equals(question.getType());
 
                 boolean isScale = "Doğrusal Ölçek".equals(question.getType());
 
                 if (hasOptions) {
                     optionsLayout.add(new H4("Seçenekler:"));
-                    
-                    if (question.getOptions() != null) {
-                        for (int i = 0; i < question.getOptions().size(); i++) {
-                            final int index = i;
-                            TextField optField = new TextField();
-                            optField.setValue(question.getOptions().get(i));
-                            optionTextFields.add(optField);
-                            
-                            Button removeOptBtn = new Button("Sil");
-                            removeOptBtn.addClickListener(remEvent -> {
-                                question.getOptions().remove(index);
-                                editDialog.close();
-                                editBtn.click(); // Pencereyi yenile
-                            });
-                            removeOptBtn.addThemeVariants(ButtonVariant.LUMO_ERROR, ButtonVariant.LUMO_SMALL);
 
-                            HorizontalLayout optRow = new HorizontalLayout(optField, removeOptBtn);
-                            optRow.setAlignItems(Alignment.CENTER);
-                            optionsLayout.add(optRow);
+                    if (question.getOptions() != null) {
+                        for (String optValue : question.getOptions()) {
+                            TextField optField = new TextField();
+                            optField.setValue(optValue != null ? optValue : "");
+                            optField.setWidthFull();
+                            optionTextFields.add(optField);
+                            optionsLayout.add(optField);
                         }
                     }
-
-                    TextField newOptField = new TextField();
-                    newOptField.setPlaceholder("Yeni seçenek ekle...");
-                    
-                    Button addOptBtn = new Button("Seçenek Ekle");
-                    addOptBtn.addClickListener(addEvent -> {
-                        if (!newOptField.isEmpty()) {
-                            if (question.getOptions() == null) {
-                                question.setOptions(new ArrayList<>());
-                            }
-                            question.getOptions().add(newOptField.getValue());
-                            editDialog.close();
-                            editBtn.click();
-                        }
-                    });
-                    addOptBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
-                    
-                    HorizontalLayout addOptRow = new HorizontalLayout(newOptField, addOptBtn);
-                    optionsLayout.add(addOptRow);
-                } 
-                else if (isScale) {
+                } else if (isScale) {
                     optionsLayout.add(new H4("Ölçek Aralıkları:"));
-                    
+
                     TextField minField = new TextField("Başlangıç Değeri");
                     TextField maxField = new TextField("Bitiş Değeri");
-                    
+
                     if (question.getOptions() != null && question.getOptions().size() >= 2) {
                         minField.setValue(question.getOptions().get(0));
                         maxField.setValue(question.getOptions().get(1));
@@ -125,12 +88,15 @@ public class ManageQuestionsView extends VerticalLayout implements BeforeEnterOb
                         minField.setValue("1");
                         maxField.setValue("5");
                     }
-                    
+
+                    minField.setWidthFull();
+                    maxField.setWidthFull();
+
                     optionTextFields.add(minField);
                     optionTextFields.add(maxField);
                     optionsLayout.add(minField, maxField);
                 }
-                
+
                 dialogLayout.add(optionsLayout);
 
                 Button saveBtn = new Button("Güncelle");
@@ -142,19 +108,25 @@ public class ManageQuestionsView extends VerticalLayout implements BeforeEnterOb
 
                     List<String> updatedOptions = new ArrayList<>();
                     for (TextField tf : optionTextFields) {
-                        if (tf != null && !tf.isEmpty()) {
-                            updatedOptions.add(tf.getValue());
+                        if (tf != null && tf.getValue() != null && !tf.getValue().trim().isEmpty()) {
+                            updatedOptions.add(tf.getValue().trim());
                         }
                     }
-                    
-                    if (hasOptions && question.getOptions() != null && !question.getOptions().isEmpty() && updatedOptions.isEmpty()) {
-                        updatedOptions = question.getOptions(); 
+
+                    // Eğer seçenek türündeyse ve boş kalmasın isteniyorsa, en azından eski listeyi koru veya güncelleneni al
+                    if (hasOptions && updatedOptions.isEmpty() && question.getOptions() != null) {
+                        updatedOptions = question.getOptions();
                     }
 
-                    QuestionService.updateQuestion(question.getId(), editField.getValue(), updatedOptions);
-                    refreshGrid();
-                    Notification.show("Soru ve seçenekler güncellendi.", 2000, Notification.Position.MIDDLE);
-                    editDialog.close();
+                    try {
+                        questionService.updateQuestion(question.getId(), editField.getValue(), updatedOptions);
+                        refreshGrid();
+                        Notification.show("Soru ve seçenekler başarıyla güncellendi.", 2000, Notification.Position.MIDDLE);
+                        editDialog.close();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        Notification.show("Güncelleme sırasında hata oluştu: " + ex.getMessage(), 4000, Notification.Position.MIDDLE);
+                    }
                 });
                 saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
@@ -169,7 +141,7 @@ public class ManageQuestionsView extends VerticalLayout implements BeforeEnterOb
 
             Button deleteBtn = new Button("Sil");
             deleteBtn.addClickListener(e -> {
-                QuestionService.deleteQuestion(question.getId());
+                questionService.deleteQuestion(question.getId());
                 refreshGrid();
                 Notification.show("Soru silindi.", 2000, Notification.Position.MIDDLE);
             });
@@ -201,9 +173,23 @@ public class ManageQuestionsView extends VerticalLayout implements BeforeEnterOb
         add(layout);
     }
 
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (userService.getLoggedInUser() == null) {
+            Notification.show("Bu sayfaya erişmek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
+            event.forwardTo("login");
+        }
+    }
+
+    @Override
+    public void setParameter(BeforeEvent event, Long parameter) {
+        this.surveyId = parameter;
+        refreshGrid();
+    }
+
     private void refreshGrid() {
         if (surveyId != null) {
-            questionGrid.setItems(QuestionService.getQuestionsBySurveyId(surveyId));
+            questionGrid.setItems(questionService.getQuestionsBySurveyId(surveyId));
         }
     }
 }

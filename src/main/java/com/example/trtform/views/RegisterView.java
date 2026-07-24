@@ -14,7 +14,11 @@ import com.vaadin.flow.router.Route;
 @PageTitle("Kayıt Ol | Dinamik Anket")
 public class RegisterView extends VerticalLayout {
 
-    public RegisterView() {
+    private final UserService userService;
+
+    public RegisterView(UserService userService) {
+        this.userService = userService;
+
         H2 title = new H2("Kayıt Ol");
 
         TextField firstNameField = new TextField("Ad");
@@ -35,13 +39,13 @@ public class RegisterView extends VerticalLayout {
                 return;
             }
 
-            boolean created = UserService.register(
-                usernameField.getValue(), 
-                passwordField.getValue(), 
-                firstNameField.getValue(), 
+            boolean created = userService.register(
+                usernameField.getValue(),
+                passwordField.getValue(),
+                firstNameField.getValue(),
                 lastNameField.getValue()
             );
-            
+
             if (created) {
                 Notification.show("Kayıt başarılı! Giriş yapabilirsiniz.", 3000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.navigate("login"));

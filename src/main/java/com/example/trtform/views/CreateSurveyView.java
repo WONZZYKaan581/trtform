@@ -14,7 +14,11 @@ import com.vaadin.flow.router.Route;
 @PageTitle("Yeni Anket Oluştur | Dinamik Anket")
 public class CreateSurveyView extends VerticalLayout {
 
-    public CreateSurveyView() {
+    private final SurveyService surveyService;
+
+    public CreateSurveyView(SurveyService surveyService) {
+        this.surveyService = surveyService;
+
         H2 title = new H2("Yeni Anket Oluştur");
 
         TextField nameField = new TextField("Anket Adı");
@@ -25,15 +29,23 @@ public class CreateSurveyView extends VerticalLayout {
         descArea.setWidthFull();
 
         Button saveButton = new Button("Anketi Kaydet", event -> {
-            if (nameField.isEmpty()) {
-                Notification.show("Anket adı boş bırakılamaz!", 3000, Notification.Position.MIDDLE);
-                return;
-            }
+    String titleValue = nameField.getValue();
+    String descValue = descArea.getValue();
 
-            SurveyService.addSurvey(nameField.getValue(), descArea.getValue());
-            Notification.show("Anket başarıyla oluşturuldu!", 3000, Notification.Position.MIDDLE);
-            getUI().ifPresent(ui -> ui.navigate(""));
-        });
+    if (titleValue == null || titleValue.trim().isEmpty()) {
+        Notification.show("Anket adı boş bırakılamaz!", 3000, Notification.Position.MIDDLE);
+        return;
+    }
+
+    try {
+        surveyService.addSurvey(titleValue, descValue);
+        Notification.show("Anket başarıyla oluşturuldu!", 3000, Notification.Position.MIDDLE);
+        getUI().ifPresent(ui -> ui.navigate(""));
+    } catch (Exception e) {
+        e.printStackTrace(); // Hata olursa terminale yazdırır
+        Notification.show("Kayıt sırasında hata oluştu: " + e.getMessage(), 5000, Notification.Position.MIDDLE);
+    }
+});
         saveButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         saveButton.setWidthFull();
 
@@ -50,7 +62,6 @@ public class CreateSurveyView extends VerticalLayout {
         formLayout.getStyle().set("border-radius", "8px");
         formLayout.getStyle().set("box-shadow", "var(--lumo-box-shadow-m)");
 
-        // Sayfayı tam ortala
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);

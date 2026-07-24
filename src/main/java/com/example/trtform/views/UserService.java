@@ -1,27 +1,36 @@
 package com.example.trtform.views;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.example.trtform.model.User;
+import com.example.trtform.repository.UserRepository;
+import org.springframework.stereotype.Service;
 
+@Service
 public class UserService {
-    private static String loggedInUser = null;
-    private static final Map<String, UserProfile> users = new HashMap<>();
 
-    static {
-        // Test için varsayılan kullanıcı
-        users.put("admin", new UserProfile("admin", "123", "Admin", "User"));
+    private final UserRepository userRepository;
+    private static String loggedInUser = null;
+
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public static boolean register(String username, String password, String firstName, String lastName) {
-        if (users.containsKey(username)) {
+    public boolean register(String username, String password, String firstName, String lastName) {
+        if (userRepository.findByUsername(username) != null) {
             return false;
         }
-        users.put(username, new UserProfile(username, password, firstName, lastName));
+
+        User newUser = new User();
+        newUser.setUsername(username);
+        newUser.setPassword(password);
+        newUser.setFull_name(firstName + " " + lastName);
+        newUser.setRole("admin".equals(username) ? "ADMIN" : "USER");
+
+        userRepository.save(newUser);
         return true;
     }
 
-    public static boolean login(String username, String password) {
-        UserProfile user = users.get(username);
+    public boolean login(String username, String password) {
+        User user = userRepository.findByUsername(username);
         if (user != null && user.getPassword().equals(password)) {
             loggedInUser = username;
             return true;
@@ -29,42 +38,23 @@ public class UserService {
         return false;
     }
 
-    public static void logout() {
+    public void logout() {
         loggedInUser = null;
     }
 
-    public static String getLoggedInUser() {
+    public String getLoggedInUser() {
         return loggedInUser;
     }
 
-    public static String getLoggedInUserFullName() {
+    public String getLoggedInUserFullName() {
         if (loggedInUser == null) return "Misafir";
-        UserProfile user = users.get(loggedInUser);
-        return user != null ? user.getFirstName() + " " + user.getLastName() : loggedInUser;
+        User user = userRepository.findByUsername(loggedInUser);
+        return user != null ? user.getFull_name() : loggedInUser;
     }
 
-    public static class UserProfile {
-        private String username;
-        private String password;
-        private String firstName;
-        private String lastName;
-
-        public UserProfile(String username, String password, String firstName, String lastName) {
-            this.username = username;
-            this.password = password;
-            this.firstName = firstName;
-            this.lastName = lastName;
-        }
-
-        public String getUsername() { return username; }
-        public String getPassword() { return password; }
-        public String getFirstName() { return firstName; }
-        public String getLastName() { return lastName; }
+    public boolean isAdmin() {
+        if (loggedInUser == null) return false;
+        User user = userRepository.findByUsername(loggedInUser);
+        return user != null && "ADMIN".equalsIgnoreCase(user.getRole());
     }
-
-    public static boolean isAdmin() {
-    if (loggedInUser == null) return false;
-    // Örneğin "admin" kullanıcı adını admin kabul edelim veya kullanıcı profiline rol ekleyebiliriz
-    return "admin".equals(loggedInUser);
-}
 }

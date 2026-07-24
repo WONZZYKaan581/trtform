@@ -2,31 +2,47 @@ package com.example.trtform.views;
 
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.component.UI;
 
 @Route("")
 @PageTitle("Ana Sayfa | Dinamik Anket")
 public class MainView extends VerticalLayout {
 
+    private final UserService userService;
+    private final SurveyService surveyService;
     private Grid<SurveyDto> surveyGrid;
 
-    public MainView() {
+    public MainView(UserService userService, SurveyService surveyService) {
+        this.userService = userService;
+        this.surveyService = surveyService;
+
+        if (userService.getLoggedInUser() == null) {
+            add(new Span("Giriş ekranına yönlendiriliyorsunuz..."));
+            UI ui = UI.getCurrent();
+            if (ui != null) {
+                ui.navigate("login");
+            }
+            return;
+        }
+
         H1 title = new H1("Dinamik Anket Uygulaması");
 
-        // Üst sağ kısım için butonlar (Soru Ekle, Anket Oluştur, Giriş/Çıkış)
         HorizontalLayout actionButtons = new HorizontalLayout();
         actionButtons.setAlignItems(Alignment.CENTER);
 
         Button addQuestionButton = new Button("Soru Ekle");
         addQuestionButton.addClickListener(event -> {
-            if (UserService.getLoggedInUser() == null) {
+            if (userService.getLoggedInUser() == null) {
                 Notification.show("Soru eklemek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.navigate("login"));
             } else {
@@ -37,7 +53,7 @@ public class MainView extends VerticalLayout {
 
         Button createSurveyButton = new Button("Yeni Anket Oluştur");
         createSurveyButton.addClickListener(event -> {
-            if (UserService.getLoggedInUser() == null) {
+            if (userService.getLoggedInUser() == null) {
                 Notification.show("Anket oluşturmak için önce giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.navigate("login"));
             } else {
@@ -47,18 +63,17 @@ public class MainView extends VerticalLayout {
         createSurveyButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         actionButtons.add(createSurveyButton);
 
-        // Kullanıcı Giriş / Çıkış Durumu
-        if (UserService.getLoggedInUser() == null) {
+        if (userService.getLoggedInUser() == null) {
             Button loginButton = new Button("Giriş Yap");
             loginButton.addClickListener(event -> {
                 getUI().ifPresent(ui -> ui.navigate("login"));
             });
             actionButtons.add(loginButton);
         } else {
-            Span welcomeText = new Span("Hoş geldin, " + UserService.getLoggedInUser());
+            Span welcomeText = new Span("Hoş geldin, " + userService.getLoggedInUser());
             Button logoutButton = new Button("Çıkış Yap");
             logoutButton.addClickListener(event -> {
-                UserService.logout();
+                userService.logout();
                 Notification.show("Çıkış yapıldı.", 2000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.getPage().reload());
             });
@@ -66,15 +81,13 @@ public class MainView extends VerticalLayout {
             actionButtons.add(welcomeText, logoutButton);
         }
 
-        // Grid Tanımlaması ve Sütunlar
         surveyGrid = new Grid<>(SurveyDto.class);
         surveyGrid.removeAllColumns();
 
-        surveyGrid.addColumn(SurveyDto::getId).setHeader("ID").setAutoWidth(true);
-        surveyGrid.addColumn(SurveyDto::getName).setHeader("Anket Adı");
-        surveyGrid.addColumn(SurveyDto::getDescription).setHeader("Açıklama");
+        surveyGrid.addColumn(survey -> survey.getId()).setHeader("ID").setAutoWidth(true);
+        surveyGrid.addColumn(survey -> survey.getName()).setHeader("Anket Adı");
+        surveyGrid.addColumn(survey -> survey.getDescription()).setHeader("Açıklama");
 
-        // Düzenle, Sorular, Sonuçlar ve Sil butonlarını içeren İşlemler Kolonu
         surveyGrid.addComponentColumn(survey -> {
             HorizontalLayout rowButtons = new HorizontalLayout();
 
@@ -84,16 +97,50 @@ public class MainView extends VerticalLayout {
             });
             editSurveyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
 
+            Button shareButton = new Button("Anketi Paylaş", event -> {
+    // Sabit veya dinamik olarak temel URL'yi alıyoruz
+    String baseUrl = "http://localhost:8080"; // Gerekirse kendi adresinle değiştirebilirsin
+    String surveyUrl = baseUrl + "/participate/" + survey.getId(); // Not: survey değişken adını kendi modeline göre ayarlayabilirsin
+
+    Dialog dialog = new Dialog();
+    dialog.setHeaderTitle("Anket Paylaşım Bağlantısı");
+
+    TextField linkField = new TextField();
+    linkField.setValue(surveyUrl);
+    linkField.setReadOnly(true);
+    linkField.setWidthFull();
+    linkField.setHelperText("Bağlantıya tıklayın, otomatik kopyalanır.");
+    linkField.getElement().addEventListener("click", clickEvent -> {
+        getUI().ifPresent(ui -> ui.getPage().executeJs(
+                "navigator.clipboard.writeText($0).then(() => {}).catch(() => {});",
+                surveyUrl
+        ));
+        Notification.show("Bağlantı panoya kopyalandı.", 2000, Notification.Position.MIDDLE);
+    });
+
+    VerticalLayout dialogLayout = new VerticalLayout(
+        new com.vaadin.flow.component.html.Paragraph("Bu bağlantıyı kopyalayarak başkalarıyla paylaşabilirsiniz:"),
+        linkField
+    );
+    dialogLayout.setPadding(false);
+
+    Button closeButton = new Button("Kapat", e -> dialog.close());
+    closeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+    dialog.add(dialogLayout);
+    dialog.getFooter().add(closeButton);
+    dialog.open();
+});
+shareButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
             Button manageQuestionsBtn = new Button("Sorular");
             manageQuestionsBtn.addClickListener(e -> {
                 getUI().ifPresent(ui -> ui.navigate("manage-questions/" + survey.getId()));
             });
             manageQuestionsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
 
-            rowButtons.add(editSurveyBtn, manageQuestionsBtn);
+            rowButtons.add(editSurveyBtn, shareButton, manageQuestionsBtn);
 
-            // KONTROL: Sadece giriş yapmış kullanıcılar sonuçları görebilsin 
-            if (UserService.getLoggedInUser() != null) {
+            if (userService.getLoggedInUser() != null) {
                 Button resultsBtn = new Button("Sonuçlar");
                 resultsBtn.addClickListener(e -> {
                     getUI().ifPresent(ui -> ui.navigate("survey-results/" + survey.getId()));
@@ -104,7 +151,7 @@ public class MainView extends VerticalLayout {
 
             Button deleteBtn = new Button("Sil");
             deleteBtn.addClickListener(e -> {
-                SurveyService.deleteSurvey(survey.getId());
+                surveyService.deleteSurvey(survey.getId());
                 refreshGrid();
                 Notification.show("Anket silindi.", 2000, Notification.Position.MIDDLE);
             });
@@ -113,9 +160,10 @@ public class MainView extends VerticalLayout {
             rowButtons.add(deleteBtn);
 
             return rowButtons;
+
+            
         }).setHeader("İşlemler");
 
-        // Tablodaki bir satıra tıklandığında ankete katılım sayfasına git
         surveyGrid.addItemClickListener(event -> {
             Long selectedSurveyId = event.getItem().getId();
             getUI().ifPresent(ui -> ui.navigate(ParticipateSurveyView.class, selectedSurveyId));
@@ -138,28 +186,35 @@ public class MainView extends VerticalLayout {
     @Override
     protected void onAttach(com.vaadin.flow.component.AttachEvent attachEvent) {
         super.onAttach(attachEvent);
+
+        if (userService.getLoggedInUser() == null) {
+            Notification.show("Bu sayfaya giriş yapmadan erişemezsiniz.", 3000, Notification.Position.MIDDLE);
+            getUI().ifPresent(ui -> ui.navigate("login"));
+            return;
+        }
+
         refreshGrid();
     }
 
     private void refreshGrid() {
-        surveyGrid.setItems(SurveyService.getSurveys());
+        surveyGrid.setItems(surveyService.getSurveys());
     }
 
     public static class SurveyDto {
         private Long id;
         private String name;
         private String description;
-        private String creator; // İleride anket sahibi kontrolü için
+        private String creator;
 
         public SurveyDto(Long id, String name, String description) {
             this.id = id;
             this.name = name;
             this.description = description;
-            this.creator = "admin"; // Varsayılan oluşturan
+            this.creator = "admin";
         }
 
         public Long getId() { return id; }
-        
+
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
 

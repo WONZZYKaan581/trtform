@@ -1,37 +1,44 @@
 package com.example.trtform.views;
 
-import java.util.ArrayList;
+import com.example.trtform.model.Survey;
+import com.example.trtform.repository.SurveyRepository;
+import org.springframework.stereotype.Service;
+
 import java.util.List;
+import java.util.stream.Collectors;
 
+@Service
 public class SurveyService {
-    private static final List<MainView.SurveyDto> surveys = new ArrayList<>();
-    private static long idCounter = 1;
 
-    static {
-        // Test amaçlı örnek bir anket ekleyelim
-        surveys.add(new MainView.SurveyDto(idCounter++, "Ürün Memnuniyeti Anketi", "Ürünümüz hakkındaki görüşleriniz bizim için önemlidir."));
+    private final SurveyRepository surveyRepository;
+
+    public SurveyService(SurveyRepository surveyRepository) {
+        this.surveyRepository = surveyRepository;
     }
 
-    public static List<MainView.SurveyDto> getSurveys() {
-        return surveys;
+    public List<MainView.SurveyDto> getSurveys() {
+        List<Survey> surveysFromDb = surveyRepository.findAll();
+        return surveysFromDb.stream()
+                .map(s -> new MainView.SurveyDto(s.getId(), s.getTitle(), s.getDescription()))
+                .collect(Collectors.toList());
     }
 
-    public static void addSurvey(String name, String description) {
-        surveys.add(new MainView.SurveyDto(idCounter++, name, description));
+    public void addSurvey(String name, String description) {
+        Survey survey = new Survey();
+        survey.setTitle(name);
+        survey.setDescription(description);
+        surveyRepository.save(survey);
     }
 
-   public static void updateSurvey(Long id, String newName, String newDesc) {
-    for (MainView.SurveyDto s : surveys) {
-        if (s.getId().equals(id)) {
-            s.setName(newName);
-            s.setDescription(newDesc);
-            break;
-        }
+    public void updateSurvey(Long id, String newName, String newDesc) {
+        surveyRepository.findById(id).ifPresent(survey -> {
+            survey.setTitle(newName);
+            survey.setDescription(newDesc);
+            surveyRepository.save(survey);
+        });
     }
-}
 
-
-public static void deleteSurvey(Long id) {
-    surveys.removeIf(s -> s.getId().equals(id));
-}
+    public void deleteSurvey(Long id) {
+        surveyRepository.deleteById(id);
+    }
 }

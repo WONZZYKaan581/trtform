@@ -16,11 +16,14 @@ import com.vaadin.flow.router.Route;
 @PageTitle("Anketi Düzenle | Dinamik Anket")
 public class EditSurveyView extends VerticalLayout implements HasUrlParameter<Long> {
 
+    private final SurveyService surveyService;
     private Long surveyId;
     private final TextField nameField = new TextField("Anket Adı");
     private final TextArea descArea = new TextArea("Anket Açıklaması");
 
-    public EditSurveyView() {
+    public EditSurveyView(SurveyService surveyService) {
+        this.surveyService = surveyService;
+
         H2 title = new H2("Anketi Düzenle");
 
         nameField.setRequired(true);
@@ -34,8 +37,7 @@ public class EditSurveyView extends VerticalLayout implements HasUrlParameter<Lo
                 return;
             }
 
-            // Servis üzerinden güncelle
-            SurveyService.updateSurvey(surveyId, nameField.getValue(), descArea.getValue());
+            surveyService.updateSurvey(surveyId, nameField.getValue(), descArea.getValue());
 
             Notification.show("Anket başarıyla güncellendi!", 3000, Notification.Position.MIDDLE);
             getUI().ifPresent(ui -> ui.navigate(""));
@@ -66,9 +68,8 @@ public class EditSurveyView extends VerticalLayout implements HasUrlParameter<Lo
     @Override
     public void setParameter(BeforeEvent event, Long parameter) {
         this.surveyId = parameter;
-        
-        // Mevcut anketi listeden bul ve alanları doldur
-        MainView.SurveyDto survey = SurveyService.getSurveys().stream()
+
+        MainView.SurveyDto survey = surveyService.getSurveys().stream()
                 .filter(s -> s.getId().equals(surveyId))
                 .findFirst()
                 .orElse(null);

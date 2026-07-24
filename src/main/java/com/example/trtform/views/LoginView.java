@@ -14,7 +14,11 @@ import com.vaadin.flow.router.Route;
 @PageTitle("Giriş Yap | Dinamik Anket")
 public class LoginView extends VerticalLayout {
 
-    public LoginView() {
+    private final UserService userService;
+
+    public LoginView(UserService userService) {
+        this.userService = userService;
+
         H2 title = new H2("Giriş Yap");
 
         TextField usernameField = new TextField("Kullanıcı Adı");
@@ -24,7 +28,7 @@ public class LoginView extends VerticalLayout {
         passwordField.setWidthFull();
 
         Button loginButton = new Button("Giriş Yap", event -> {
-            boolean success = UserService.login(usernameField.getValue(), passwordField.getValue());
+            boolean success = userService.login(usernameField.getValue(), passwordField.getValue());
             if (success) {
                 Notification.show("Giriş başarılı!", 3000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.navigate(""));
@@ -48,7 +52,6 @@ public class LoginView extends VerticalLayout {
         formLayout.getStyle().set("border-radius", "8px");
         formLayout.getStyle().set("box-shadow", "var(--lumo-box-shadow-m)");
 
-        // Sayfayı tam ortala
         setSizeFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.CENTER);
