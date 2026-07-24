@@ -1,1 +1,69 @@
-a
+Geliştirici 1'e (Backend ve Veritabanı Sorumlusu) iletmen için projenin mevcut durumu, yeni eklenen özellikler ve MySQL veritabanında oluşturulması gereken yapılarla ilgili gelistirici_notlari.txt dosyasına kopyalayabileceğin tam liste:
+
+Geliştirici 1 İçin Proje ve Veritabanı Görevleri
+1. Veritabanı Tabloları ve Şeması (MySQL):
+Projenin verilerini kalıcı hale getirmek için MySQL üzerinde aşağıdaki tabloların ve ilişkilerin kurulması gerekiyor:
+
+users (Kullanıcılar Tablosu):
+
+id (PK, Long/Auto Increment)
+
+username (String)
+
+password (String)
+
+full_name (String - Ad Soyad bilgisi katılımcılar ve giriş için tutuluyor)
+
+role (String veya Boolean - Admin / Normal kullanıcı yetkilendirmesi için)
+
+surveys (Anketler Tablosu):
+
+id (PK, Long/Auto Increment)
+
+title (String - Anket Başlığı)
+
+description (String - Anket Açıklaması)
+
+creator_username (String - Anketi oluşturan kullanıcı)
+
+questions (Sorular Tablosu):
+
+id (PK, Long/Auto Increment)
+
+survey_id (FK - Hangi ankete ait olduğu)
+
+question_text (String - Soru metni)
+
+question_type (String - Çoktan Seçmeli, Onay Kutuları, Açılır Menü, Doğrusal Ölçek, Kısa Yanıt, Paragraf)
+
+question_options (Seçenekler Tablosu):
+
+id (PK, Long/Auto Increment)
+
+question_id (FK - Hangi soruya ait olduğu)
+
+option_text (String - Şık metni veya Doğrusal ölçek için min/max değerler)
+
+participations / answers (Yanıtlar Tablosu):
+
+id (PK, Long/Auto Increment)
+
+survey_id (FK)
+
+question_id (FK)
+
+respondent_name (String - Yanıtlayan kullanıcının Ad Soyadı)
+
+answer_text (String - Seçilen şık, girilen kısa yanıt, paragraf veya ölçek puanı)
+
+2. Backend ve Servis Entegrasyonları:
+
+Şu an arayüzde (Vaadin ekranlarında) geçici bellek listeleriyle çalışan UserService, QuestionService, SurveyService ve ParticipationService yapıları Spring Data JPA / JDBC katotlarına bağlanacak.
+
+Veritabanı üzerindeki CRUD (Ekleme, Listeleme, Güncelleme, Silme) operasyonları bu servisler üzerinden çalışacak şekilde yazılacak.
+
+3. Yetkilendirme ve Rol Yönetimi (Güvenlik):
+
+Giriş yapan kullanıcının rolüne göre (Admin / Normal Kullanıcı) sayfa erişim kısıtlamaları (BeforeEnterObserver veya Spring Security tabanlı) arka planda aktif edilecek.
+
+Sadece admin yetkisine sahip kullanıcıların anket oluşturma, soru ekleme, düzenleme ve sonuçları görme yetkisi olacak; standart kullanıcılar sadece anket yanıtlayabilecek.
