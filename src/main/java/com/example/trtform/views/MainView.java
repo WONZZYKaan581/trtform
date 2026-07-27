@@ -40,16 +40,7 @@ public class MainView extends VerticalLayout {
         HorizontalLayout actionButtons = new HorizontalLayout();
         actionButtons.setAlignItems(Alignment.CENTER);
 
-        Button addQuestionButton = new Button("Soru Ekle");
-        addQuestionButton.addClickListener(event -> {
-            if (userService.getLoggedInUser() == null) {
-                Notification.show("Soru eklemek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
-                getUI().ifPresent(ui -> ui.navigate("login"));
-            } else {
-                getUI().ifPresent(ui -> ui.navigate("add-question"));
-            }
-        });
-        actionButtons.add(addQuestionButton);
+        // Genel "Soru Ekle" butonunu kaldırıp, isteğin üzerine anket satırlarına taşıdık
 
         Button createSurveyButton = new Button("Yeni Anket Oluştur");
         createSurveyButton.addClickListener(event -> {
@@ -91,77 +82,90 @@ public class MainView extends VerticalLayout {
         surveyGrid.addComponentColumn(survey -> {
             HorizontalLayout rowButtons = new HorizontalLayout();
 
-            Button editSurveyBtn = new Button("Düzenle");
-            editSurveyBtn.addClickListener(e -> {
-                getUI().ifPresent(ui -> ui.navigate("edit-survey/" + survey.getId()));
-            });
-            editSurveyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
+            // Şu an giriş yapan kullanıcı adı
+            String currentUsername = userService.getLoggedInUser();
+            
+            // Anketin sahibi şu anki kullanıcı mı kontrol ediyoruz
+            boolean isOwner = currentUsername != null && currentUsername.equals(survey.getCreator());
 
-            Button shareButton = new Button("Anketi Paylaş", event -> {
-    // Sabit veya dinamik olarak temel URL'yi alıyoruz
-    String baseUrl = "http://localhost:8080"; // Gerekirse kendi adresinle değiştirebilirsin
-    String surveyUrl = baseUrl + "/participate/" + survey.getId(); // Not: survey değişken adını kendi modeline göre ayarlayabilirsin
-
-    Dialog dialog = new Dialog();
-    dialog.setHeaderTitle("Anket Paylaşım Bağlantısı");
-
-    TextField linkField = new TextField();
-    linkField.setValue(surveyUrl);
-    linkField.setReadOnly(true);
-    linkField.setWidthFull();
-    linkField.setHelperText("Bağlantıya tıklayın, otomatik kopyalanır.");
-    linkField.getElement().addEventListener("click", clickEvent -> {
-        getUI().ifPresent(ui -> ui.getPage().executeJs(
-                "navigator.clipboard.writeText($0).then(() => {}).catch(() => {});",
-                surveyUrl
-        ));
-        Notification.show("Bağlantı panoya kopyalandı.", 2000, Notification.Position.MIDDLE);
-    });
-
-    VerticalLayout dialogLayout = new VerticalLayout(
-        new com.vaadin.flow.component.html.Paragraph("Bu bağlantıyı kopyalayarak başkalarıyla paylaşabilirsiniz:"),
-        linkField
-    );
-    dialogLayout.setPadding(false);
-
-    Button closeButton = new Button("Kapat", e -> dialog.close());
-    closeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-
-    dialog.add(dialogLayout);
-    dialog.getFooter().add(closeButton);
-    dialog.open();
+            // Sadece anket sahibiyse yönetim, soru ekleme ve paylaşım butonlarını gösteriyoruz
+            if (isOwner) {
+                Button addQuestionBtn = new Button("Soru Ekle");
+addQuestionBtn.addClickListener(e -> {
+    getUI().ifPresent(ui -> ui.navigate("add-question/" + survey.getId()));
 });
-shareButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-            Button manageQuestionsBtn = new Button("Sorular");
-            manageQuestionsBtn.addClickListener(e -> {
-                getUI().ifPresent(ui -> ui.navigate("manage-questions/" + survey.getId()));
-            });
-            manageQuestionsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_PRIMARY);
+addQuestionBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_SUCCESS);
+                Button editSurveyBtn = new Button("Düzenle");
+                editSurveyBtn.addClickListener(e -> {
+                    getUI().ifPresent(ui -> ui.navigate("edit-survey/" + survey.getId()));
+                });
+                editSurveyBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
 
-            rowButtons.add(editSurveyBtn, shareButton, manageQuestionsBtn);
+                Button shareButton = new Button("Paylaş", event -> {
+                    String baseUrl = "http://localhost:8080";
+                    String surveyUrl = baseUrl + "/participate/" + survey.getId();
 
-            if (userService.getLoggedInUser() != null) {
+                    Dialog dialog = new Dialog();
+                    dialog.setHeaderTitle("Anket Paylaşım Bağlantısı");
+
+                    TextField linkField = new TextField();
+                    linkField.setValue(surveyUrl);
+                    linkField.setReadOnly(true);
+                    linkField.setWidthFull();
+                    linkField.setHelperText("Bağlantıya tıklayın, otomatik kopyalanır.");
+                    linkField.getElement().addEventListener("click", clickEvent -> {
+                        getUI().ifPresent(ui -> ui.getPage().executeJs(
+                                "navigator.clipboard.writeText($0).then(() => {}).catch(() => {});",
+                                surveyUrl
+                        ));
+                        Notification.show("Bağlantı panoya kopyalandı.", 2000, Notification.Position.MIDDLE);
+                    });
+
+                    VerticalLayout dialogLayout = new VerticalLayout(
+                        new com.vaadin.flow.component.html.Paragraph("Bu bağlantıyı kopyalayarak başkalarıyla paylaşabilirsiniz:"),
+                        linkField
+                    );
+                    dialogLayout.setPadding(false);
+
+                    Button closeButton = new Button("Kapat", e -> dialog.close());
+                    closeButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+
+                    dialog.add(dialogLayout);
+                    dialog.getFooter().add(closeButton);
+                    dialog.open();
+                });
+                shareButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY, ButtonVariant.LUMO_SMALL);
+
+                Button manageQuestionsBtn = new Button("Sorular");
+                manageQuestionsBtn.addClickListener(e -> {
+                    getUI().ifPresent(ui -> ui.navigate("manage-questions/" + survey.getId()));
+                });
+                manageQuestionsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
+
                 Button resultsBtn = new Button("Sonuçlar");
                 resultsBtn.addClickListener(e -> {
                     getUI().ifPresent(ui -> ui.navigate("survey-results/" + survey.getId()));
                 });
                 resultsBtn.addThemeVariants(ButtonVariant.LUMO_SMALL);
-                rowButtons.add(resultsBtn);
+
+                Button deleteBtn = new Button("Sil");
+                deleteBtn.addClickListener(e -> {
+                    surveyService.deleteSurvey(survey.getId());
+                    refreshGrid();
+                    Notification.show("Anket silindi.", 2000, Notification.Position.MIDDLE);
+                });
+                deleteBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
+
+                rowButtons.add(addQuestionBtn, editSurveyBtn, shareButton, manageQuestionsBtn, resultsBtn, deleteBtn);
+            } else {
+                Span infoSpan = new Span("Katılımcı Görünümü");
+                infoSpan.getStyle().set("color", "var(--lumo-secondary-text-color)");
+                infoSpan.getStyle().set("font-size", "var(--lumo-font-size-s)");
+                rowButtons.add(infoSpan);
             }
-
-            Button deleteBtn = new Button("Sil");
-            deleteBtn.addClickListener(e -> {
-                surveyService.deleteSurvey(survey.getId());
-                refreshGrid();
-                Notification.show("Anket silindi.", 2000, Notification.Position.MIDDLE);
-            });
-            deleteBtn.addThemeVariants(ButtonVariant.LUMO_SMALL, ButtonVariant.LUMO_ERROR);
-
-            rowButtons.add(deleteBtn);
 
             return rowButtons;
 
-            
         }).setHeader("İşlemler");
 
         surveyGrid.addItemClickListener(event -> {
@@ -206,11 +210,11 @@ shareButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         private String description;
         private String creator;
 
-        public SurveyDto(Long id, String name, String description) {
+        public SurveyDto(Long id, String name, String description, String creator) {
             this.id = id;
             this.name = name;
             this.description = description;
-            this.creator = "admin";
+            this.creator = creator;
         }
 
         public Long getId() { return id; }

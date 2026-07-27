@@ -8,35 +8,28 @@ import com.vaadin.flow.component.html.Hr;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextField;
-import com.vaadin.flow.router.BeforeEnterEvent;
-import com.vaadin.flow.router.BeforeEnterObserver;
-import com.vaadin.flow.router.PageTitle;
-import com.vaadin.flow.router.Route;
+import com.vaadin.flow.router.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Route("add-question")
 @PageTitle("Soru Ekle | Dinamik Anket")
-public class AddQuestionView extends VerticalLayout implements BeforeEnterObserver {
+public class AddQuestionView extends VerticalLayout implements BeforeEnterObserver, HasUrlParameter<Long> {
 
     private final UserService userService;
-    private final SurveyService surveyService;
     private final QuestionService questionService;
     private final List<TextField> optionFields = new ArrayList<>();
     private final VerticalLayout optionsLayout = new VerticalLayout();
+    
+    private Long surveyId;
 
-    public AddQuestionView(UserService userService, SurveyService surveyService, QuestionService questionService) {
+    public AddQuestionView(UserService userService, QuestionService questionService) {
         this.userService = userService;
-        this.surveyService = surveyService;
         this.questionService = questionService;
 
         H2 title = new H2("Ankete Soru Ekle");
-
-        ComboBox<MainView.SurveyDto> surveyComboBox = new ComboBox<>("Anket Seç");
-        surveyComboBox.setItems(surveyService.getSurveys());
-        surveyComboBox.setItemLabelGenerator(item -> item != null ? item.getName() : "");
-        surveyComboBox.setWidthFull();
 
         TextField questionTextField = new TextField("Soru Metni");
         questionTextField.setPlaceholder("Örn: Bu etkinliği nasıl buldunuz?");
@@ -108,13 +101,12 @@ public class AddQuestionView extends VerticalLayout implements BeforeEnterObserv
         }
 
         Button saveQuestionButton = new Button("Soruyu Kaydet", event -> {
-            if (surveyComboBox.isEmpty() || questionTextField.isEmpty()) {
-                Notification.show("Lütfen anket seçin ve soru metnini yazın!", 3000, Notification.Position.MIDDLE);
+            if (surveyId == null || questionTextField.isEmpty()) {
+                Notification.show("Anket ID bulunamadı veya soru metni boş!", 3000, Notification.Position.MIDDLE);
                 return;
             }
 
             try {
-                Long selectedSurveyId = surveyComboBox.getValue().getId();
                 String qText = questionTextField.getValue();
                 String qType = questionTypeBox.getValue();
 
@@ -125,13 +117,13 @@ public class AddQuestionView extends VerticalLayout implements BeforeEnterObserv
                     }
                 }
 
-                questionService.addQuestion(selectedSurveyId, qText, qType, optionsList);
+                questionService.addQuestion(surveyId, qText, qType, optionsList);
 
                 Notification.show("Soru başarıyla eklendi!", 3000, Notification.Position.MIDDLE);
                 getUI().ifPresent(ui -> ui.navigate(""));
                 
             } catch (Exception e) {
-                e.printStackTrace(); // Hatayı konsola yazar
+                e.printStackTrace();
                 Notification.show("Hata oluştu: " + e.getMessage(), 5000, Notification.Position.MIDDLE);
             }
         });
@@ -144,7 +136,7 @@ public class AddQuestionView extends VerticalLayout implements BeforeEnterObserv
         backButton.setWidthFull();
 
         VerticalLayout formLayout = new VerticalLayout(
-            title, surveyComboBox, questionTextField, questionTypeBox,
+            title, questionTextField, questionTypeBox,
             new Hr(), optionsLayout, addOptionButton, new Hr(),
             saveQuestionButton, backButton
         );
@@ -167,6 +159,23 @@ public class AddQuestionView extends VerticalLayout implements BeforeEnterObserv
         if (userService.getLoggedInUser() == null) {
             Notification.show("Bu sayfaya erişmek için giriş yapmalısınız!", 3000, Notification.Position.MIDDLE);
             event.forwardTo("login");
+        }
+        
+        // Query parametresinden (örneğin ?surveyId=5) ID'yi yakalamak için alternatif kontrol
+        String surveyIdParam = event.getLocation().getQueryParameters().getParameters().getOrDefault("surveyId", List.of()).stream().findFirst().orElse(null);
+        if (surveyIdParam != null) {
+            try {
+                this.surveyId = Long.parseLong(surveyIdParam);
+            } catch (NumberFormatException e) {
+                // Yoksay
+            }
+        }
+    }
+
+    @Override
+    public void setParameter(BeforeEvent event, @OptionalParameter Long parameter) {
+        if (parameter != null) {
+            this.surveyId = parameter;
         }
     }
 }

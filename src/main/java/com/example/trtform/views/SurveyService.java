@@ -11,15 +11,22 @@ import java.util.stream.Collectors;
 public class SurveyService {
 
     private final SurveyRepository surveyRepository;
+    private final UserService userService; // Kullanıcı adını almak için ekledik
 
-    public SurveyService(SurveyRepository surveyRepository) {
+    public SurveyService(SurveyRepository surveyRepository, UserService userService) {
         this.surveyRepository = surveyRepository;
+        this.userService = userService;
     }
 
     public List<MainView.SurveyDto> getSurveys() {
         List<Survey> surveysFromDb = surveyRepository.findAll();
         return surveysFromDb.stream()
-                .map(s -> new MainView.SurveyDto(s.getId(), s.getTitle(), s.getDescription()))
+                .map(s -> new MainView.SurveyDto(
+                    s.getId(), 
+                    s.getTitle(), 
+                    s.getDescription(), 
+                    s.getCreatorUsername() // Doğru metot adı
+                ))
                 .collect(Collectors.toList());
     }
 
@@ -27,6 +34,7 @@ public class SurveyService {
         Survey survey = new Survey();
         survey.setTitle(name);
         survey.setDescription(description);
+        survey.setCreatorUsername(userService.getLoggedInUser()); // Anketi oluşturan kullanıcıyı kaydediyoruz
         surveyRepository.save(survey);
     }
 
