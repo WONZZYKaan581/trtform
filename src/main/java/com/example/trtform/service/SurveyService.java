@@ -1,7 +1,8 @@
-package com.example.trtform.views;
+package com.example.trtform.service;
 
 import com.example.trtform.model.Survey;
 import com.example.trtform.repository.SurveyRepository;
+import com.example.trtform.views.MainView;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

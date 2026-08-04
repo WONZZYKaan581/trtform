@@ -1,6 +1,5 @@
 package com.example.trtform.views;
 
-import com.example.trtform.service.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H2;
@@ -29,37 +28,23 @@ public class LoginView extends VerticalLayout {
         passwordField.setWidthFull();
 
         Button loginButton = new Button("Giriş Yap", event -> {
-            String username = usernameField.getValue();
-            String password = passwordField.getValue();
-
-            if (username.isBlank() || password.isBlank()) {
-                Notification.show("Kullanıcı adı ve şifre zorunludur.", 3000, Notification.Position.MIDDLE);
-                return;
-            }
-
-            boolean loggedIn = userService.login(username, password);
-            if (loggedIn) {
-                Notification.show("Giriş başarılı.", 2000, Notification.Position.MIDDLE);
-                getUI().ifPresent(ui -> {
-                    if (userService.isAdmin()) {
-                        ui.navigate("admin-panel");
-                    } else {
-                        ui.navigate("");
-                    }
-                });
+            boolean success = userService.login(usernameField.getValue(), passwordField.getValue());
+            if (success) {
+                Notification.show("Giriş başarılı!", 3000, Notification.Position.MIDDLE);
+                getUI().ifPresent(ui -> ui.navigate(""));
             } else {
-                Notification.show("Kullanıcı adı veya şifre yanlış.", 3000, Notification.Position.MIDDLE);
+                Notification.show("Hatalı kullanıcı adı veya şifre!", 3000, Notification.Position.MIDDLE);
             }
         });
         loginButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         loginButton.setWidthFull();
 
-        Button registerButton = new Button("Kayıt Ol", event -> {
+        Button registerRedirectButton = new Button("Hesabın yok mu? Kayıt Ol", event -> {
             getUI().ifPresent(ui -> ui.navigate("register"));
         });
-        registerButton.setWidthFull();
+        registerRedirectButton.setWidthFull();
 
-        VerticalLayout formLayout = new VerticalLayout(title, usernameField, passwordField, loginButton, registerButton);
+        VerticalLayout formLayout = new VerticalLayout(title, usernameField, passwordField, loginButton, registerRedirectButton);
         formLayout.setWidth("400px");
         formLayout.setAlignItems(Alignment.STRETCH);
         formLayout.setPadding(true);

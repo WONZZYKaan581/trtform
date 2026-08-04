@@ -1,5 +1,7 @@
 package com.example.trtform.views;
 
+import com.example.trtform.service.SurveyService;
+import com.example.trtform.service.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.dialog.Dialog;
@@ -62,6 +64,10 @@ public class MainView extends VerticalLayout {
             actionButtons.add(loginButton);
         } else {
             Span welcomeText = new Span("Hoş geldin, " + userService.getLoggedInUser());
+            Button adminPanelButton = new Button("Admin Panel");
+            adminPanelButton.addClickListener(event -> getUI().ifPresent(ui -> ui.navigate("admin-panel")));
+            adminPanelButton.addThemeVariants(ButtonVariant.LUMO_CONTRAST);
+            actionButtons.add(adminPanelButton);
             Button logoutButton = new Button("Çıkış Yap");
             logoutButton.addClickListener(event -> {
                 userService.logout();
@@ -82,14 +88,11 @@ public class MainView extends VerticalLayout {
         surveyGrid.addComponentColumn(survey -> {
             HorizontalLayout rowButtons = new HorizontalLayout();
 
-            // Şu an giriş yapan kullanıcı adı
             String currentUsername = userService.getLoggedInUser();
-            
-            // Anketin sahibi şu anki kullanıcı mı kontrol ediyoruz
             boolean isOwner = currentUsername != null && currentUsername.equals(survey.getCreator());
+            boolean canManageSurvey = isOwner || userService.isAdmin();
 
-            // Sadece anket sahibiyse yönetim, soru ekleme ve paylaşım butonlarını gösteriyoruz
-            if (isOwner) {
+            if (canManageSurvey) {
                 Button addQuestionBtn = new Button("Soru Ekle");
 addQuestionBtn.addClickListener(e -> {
     getUI().ifPresent(ui -> ui.navigate("add-question/" + survey.getId()));

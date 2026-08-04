@@ -1,4 +1,4 @@
-package com.example.trtform.views;
+package com.example.trtform.service;
 
 import com.example.trtform.model.Participation;
 import com.example.trtform.repository.ParticipationRepository;

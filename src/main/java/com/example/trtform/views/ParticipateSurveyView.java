@@ -1,5 +1,8 @@
 package com.example.trtform.views;
 
+import com.example.trtform.service.ParticipationService;
+import com.example.trtform.service.QuestionService;
+import com.example.trtform.service.UserService;
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -12,6 +15,8 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.radiobutton.RadioButtonGroup;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
+import com.vaadin.flow.router.BeforeEnterEvent;
+import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.PageTitle;
@@ -22,7 +27,7 @@ import java.util.List;
 
 @Route("participate")
 @PageTitle("Ankete Katıl | Dinamik Anket")
-public class ParticipateSurveyView extends VerticalLayout implements HasUrlParameter<Long> {
+public class ParticipateSurveyView extends VerticalLayout implements HasUrlParameter<Long>, BeforeEnterObserver {
 
     private final UserService userService;
     private final QuestionService questionService;
@@ -35,6 +40,14 @@ public class ParticipateSurveyView extends VerticalLayout implements HasUrlParam
         this.userService = userService;
         this.questionService = questionService;
         this.participationService = participationService;
+    }
+
+    @Override
+    public void beforeEnter(BeforeEnterEvent event) {
+        if (!userService.isLoggedIn()) {
+            Notification.show("Anketi doldurmak için giriş yapmanız gerekiyor.", 3000, Notification.Position.MIDDLE);
+            event.forwardTo("login");
+        }
     }
 
     @Override
@@ -118,6 +131,12 @@ public class ParticipateSurveyView extends VerticalLayout implements HasUrlParam
         Button submitButton = new Button("Anketi Gönder");
         submitButton.addClickListener(event -> {
             try {
+                if (!userService.isLoggedIn()) {
+                    Notification.show("Anketi göndermek için giriş yapmanız gerekiyor.", 3000, Notification.Position.MIDDLE);
+                    getUI().ifPresent(ui -> ui.navigate("login"));
+                    return;
+                }
+
                 String respondentName = userService.getLoggedInUserFullName();
 
                 for (QuestionAnswerComponent qa : questionComponents) {
