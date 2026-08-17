@@ -8,7 +8,10 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridVariant;
 import com.vaadin.flow.component.html.*;
+import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
@@ -41,13 +44,48 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
         this.participationService = participationService;
         this.surveyService = surveyService;
 
-        H2 title = new H2("Anket Sonuç Raporu ve Grafikler");
-        title.getStyle().set("margin-top", "0");
+        // --- SAYFA ARKA PLANI VE GENEL AYARLAR ---
+        setSizeFull();
+        getStyle().set("background", "linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)"); 
+        setAlignItems(Alignment.CENTER);
+        setJustifyContentMode(JustifyContentMode.START);
+        getStyle().set("overflow-y", "auto");
+        setPadding(true);
+
+        // --- ANA KART (İçerikleri saran şık beyaz kutu) ---
+        VerticalLayout mainCard = new VerticalLayout();
+        mainCard.setWidth("1000px");
+        mainCard.setMaxWidth("100%");
+        mainCard.getStyle().set("background", "white");
+        mainCard.getStyle().set("border-radius", "16px");
+        mainCard.getStyle().set("box-shadow", "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)");
+        mainCard.setPadding(true);
+        mainCard.setSpacing(true);
+        mainCard.getStyle().set("margin", "20px auto");
+
+        // Başlık
+        H2 title = new H2("📈 Anket Sonuç Raporu ve Grafikler");
+        title.getStyle().set("margin", "0");
+        title.getStyle().set("color", "var(--lumo-primary-text-color)");
+
+        // Geri Dön Butonu
+        Button backButton = new Button("Geri Dön", new Icon(VaadinIcon.ARROW_LEFT), event -> {
+            getUI().ifPresent(ui -> ui.navigate(""));
+        });
+        backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
+
+        // Header Alanı
+        HorizontalLayout headerLayout = new HorizontalLayout(title, backButton);
+        headerLayout.setWidthFull();
+        headerLayout.setJustifyContentMode(JustifyContentMode.BETWEEN);
+        headerLayout.setAlignItems(Alignment.CENTER);
+        headerLayout.getStyle().set("border-bottom", "1px solid var(--lumo-contrast-10pct)");
+        headerLayout.getStyle().set("padding-bottom", "15px");
 
         summaryParagraph = new Paragraph("Yükleniyor...");
         summaryParagraph.getStyle().set("font-weight", "500").set("color", "var(--lumo-secondary-text-color)");
 
-        // Grafik türü seçimi için ComboBox (Sütun Grafik / Daire Grafik / Tablo)
+        // Grafik türü seçimi için ComboBox
         globalChartTypeBox = new ComboBox<>("Grafik Görünümü");
         globalChartTypeBox.setItems("Sütun Grafik", "Daire Grafik", "Tablo Görünümü");
         globalChartTypeBox.setValue("Sütun Grafik");
@@ -62,28 +100,9 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
         contentLayout.setWidthFull();
         contentLayout.setPadding(false);
 
-        Button backButton = new Button("Geri Dön", event -> {
-            getUI().ifPresent(ui -> ui.navigate(""));
-        });
-        backButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
-
-        VerticalLayout mainWrapper = new VerticalLayout(title, summaryParagraph, topControlLayout, contentLayout, backButton);
-        mainWrapper.setWidth("980px");
-        mainWrapper.setAlignItems(Alignment.STRETCH);
-        mainWrapper.setPadding(true);
-        mainWrapper.setSpacing(true);
-        mainWrapper.getStyle().set("background", "var(--lumo-base-color)");
-        mainWrapper.getStyle().set("border-radius", "12px");
-        mainWrapper.getStyle().set("box-shadow", "var(--lumo-box-shadow-l)");
-        mainWrapper.getStyle().set("margin", "20px auto");
-
-        // Sayfanın yukarıdan başlamasını ve dikey kaydırılabilmesini sağlayan ayarlar:
-        setSizeFull();
-        setAlignItems(Alignment.CENTER);
-        setJustifyContentMode(JustifyContentMode.START);
-        getStyle().set("overflow-y", "auto");
-
-        add(mainWrapper);
+        // Ana kartın içine elemanları ekle
+        mainCard.add(headerLayout, summaryParagraph, topControlLayout, contentLayout);
+        add(mainCard);
     }
 
     @Override
@@ -124,7 +143,7 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
             }
         }
 
-        summaryParagraph.setText("Anket Adı: " + surveyName + " | Açıklama: " + surveyDesc + " | Toplam Katılımcı: " + uniqueParticipants.size());
+        summaryParagraph.setText("📌 Anket Adı: " + surveyName + " | Açıklama: " + surveyDesc + " | Toplam Katılımcı: " + uniqueParticipants.size());
         contentLayout.removeAll();
 
         VerticalLayout overviewLayout = new VerticalLayout();
@@ -315,6 +334,10 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
 
                         Grid<OptionStatDto> statGrid = new Grid<>(OptionStatDto.class);
                         statGrid.removeAllColumns();
+                        
+                        // Tabloya yeni çizgili tasarım eklendi
+                        statGrid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_NO_BORDER);
+
                         statGrid.addColumn(option -> option.getOptionText()).setHeader("Seçenek").setAutoWidth(true);
                         statGrid.addColumn(option -> option.getCount()).setHeader("Oy Sayısı").setAutoWidth(true);
                         statGrid.addColumn(option -> option.getPercentage()).setHeader("Yüzde Oranı").setAutoWidth(true);
@@ -341,6 +364,7 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
                     questionBox.add(answersListLayout);
                 }
 
+                // Senin Eklediğin Özel Alan: Kimler ne yanıt verdi?
                 VerticalLayout respondentsLayout = createRespondentBreakdown(qAnswers);
                 if (respondentsLayout != null) {
                     questionBox.add(respondentsLayout);
@@ -361,19 +385,22 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
         respondentsLayout.setSpacing(false);
         respondentsLayout.setWidthFull();
         respondentsLayout.getStyle().set("margin-top", "12px");
+        respondentsLayout.getStyle().set("border-top", "1px dashed var(--lumo-contrast-20pct)");
+        respondentsLayout.getStyle().set("padding-top", "12px");
 
-        H5 header = new H5("Kimler ne yanıt verdi?");
-        header.getStyle().set("margin", "0 0 6px 0");
+        H5 header = new H5("👥 Kimler ne yanıt verdi?");
+        header.getStyle().set("margin", "0 0 8px 0");
         respondentsLayout.add(header);
 
         for (ParticipationService.AnswerDto ans : qAnswers) {
             String participantName = ans.getParticipantName() != null ? ans.getParticipantName() : "Anonim";
             String answerText = ans.getAnswerText() != null ? ans.getAnswerText() : "-";
 
-            Span row = new Span(participantName + " → " + answerText);
+            Span row = new Span(participantName + " ➔ " + answerText);
             row.getStyle().set("font-size", "var(--lumo-font-size-s)")
                     .set("display", "block")
-                    .set("margin-bottom", "4px");
+                    .set("margin-bottom", "4px")
+                    .set("color", "var(--lumo-secondary-text-color)");
             respondentsLayout.add(row);
         }
 
