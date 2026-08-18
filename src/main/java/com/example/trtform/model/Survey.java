@@ -4,11 +4,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "surveys")
-public class Survey {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Survey extends BaseEntity {
 
     @Column(nullable = false)
     private String title;
@@ -20,9 +16,6 @@ public class Survey {
     private String creatorUsername; // Yeni eklenen alan
 
     // Getter ve Setter metotları
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
 
