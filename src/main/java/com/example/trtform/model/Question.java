@@ -3,9 +3,10 @@ package com.example.trtform.model;
 import jakarta.persistence.*;
 import java.util.List;
 
+// Question now extends BaseEntity directly
 @Entity
 @Table(name = "questions")
-public class Question extends SurveyOwnedEntity {
+public class Question extends BaseEntity {
 
     // Sütun adını doğrudan "question_text" olarak sabitliyoruz
     @Column(name = "question_text", nullable = false, columnDefinition = "TEXT")
@@ -18,6 +19,14 @@ public class Question extends SurveyOwnedEntity {
     @CollectionTable(name = "question_options", joinColumns = @JoinColumn(name = "question_id"))
     @Column(name = "option_text")
     private List<String> options;
+
+    // surveyId moved from SurveyOwnedEntity
+    @Column(name = "survey_id", nullable = false)
+    protected Long surveyId;
+
+    // Getter and Setter for surveyId
+    public Long getSurveyId() { return surveyId; }
+    public void setSurveyId(Long surveyId) { this.surveyId = surveyId; }
 
     public String getText() { return text; }
     public void setText(String text) { this.text = text; }

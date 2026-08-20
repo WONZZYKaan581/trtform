@@ -2,9 +2,10 @@ package com.example.trtform.model;
 
 import jakarta.persistence.*;
 
+// Participation now extends BaseEntity directly
 @Entity
 @Table(name = "participations")
-public class Participation extends SurveyOwnedEntity {
+public class Participation extends BaseEntity {
 
     @Column(name = "question_id", nullable = false)
     protected Long questionId;
@@ -14,6 +15,14 @@ public class Participation extends SurveyOwnedEntity {
 
     @Column(name = "participant_name", nullable = false)
     private String participantName;
+
+    // surveyId moved from SurveyOwnedEntity
+    @Column(name = "survey_id", nullable = false)
+    protected Long surveyId;
+
+    // Getter and Setter for surveyId
+    public Long getSurveyId() { return surveyId; }
+    public void setSurveyId(Long surveyId) { this.surveyId = surveyId; }
 
     // Getter ve Setter metotları
     public Long getQuestionId() { return questionId; }

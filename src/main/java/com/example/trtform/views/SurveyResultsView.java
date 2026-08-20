@@ -29,6 +29,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.stream.Collectors;
 
 @Route("survey-results")
 @PageTitle("Anket Sonuçları | Dinamik Anket")
@@ -52,7 +55,7 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
 
         // --- SAYFA ARKA PLANI VE GENEL AYARLAR ---
         setSizeFull();
-        getStyle().set("background", "linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)"); 
+        getStyle().set("background", "linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)");
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.START);
         getStyle().set("overflow-y", "auto");
@@ -425,223 +428,87 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
             return;
         }
 
-        String selectedView = globalChartTypeBox != null ? globalChartTypeBox.getValue() : "Tablo Görünümü";
-
         List<MainView.SurveyDto> surveys = surveyService.getSurveys();
-        String surveyName = "Anket";
-        String surveyDescription = "";
-        for (MainView.SurveyDto s : surveys) {
-            if (Objects.equals(s.getId(), surveyId)) {
-                surveyName = s.getName();
-                surveyDescription = s.getDescription();
-                break;
-            }
-        }
+        String surveyName = surveys.stream().filter(s -> s.getId().equals(surveyId))
+                .map(MainView.SurveyDto::getName).findFirst().orElse("Anket");
 
         List<QuestionService.QuestionDto> questions = questionService.getQuestionsBySurveyId(surveyId);
         List<ParticipationService.AnswerDto> answers = participationService.getAnswersBySurveyId(surveyId);
 
         try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet summarySheet = workbook.createSheet("Özet");
-            summarySheet.setColumnWidth(0, 26 * 256);
-            summarySheet.setColumnWidth(1, 42 * 256);
-            summarySheet.setColumnWidth(2, 20 * 256);
-            summarySheet.setColumnWidth(3, 18 * 256);
-            summarySheet.setColumnWidth(4, 18 * 256);
-
+            Sheet sheet = workbook.createSheet("Anket Sonuçları");
+            
+            // Stiller
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            headerStyle.setAlignment(HorizontalAlignment.CENTER);
-            headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
 
-            CellStyle titleStyle = workbook.createCellStyle();
-            Font titleFont = workbook.createFont();
-            titleFont.setBold(true);
-            titleFont.setFontHeightInPoints((short) 16);
-            titleFont.setColor(IndexedColors.DARK_BLUE.getIndex());
-            titleStyle.setFont(titleFont);
+            CellStyle questionTitleStyle = workbook.createCellStyle();
+            Font qFont = workbook.createFont();
+            qFont.setBold(true);
+            qFont.setColor(IndexedColors.DARK_BLUE.getIndex());
+            questionTitleStyle.setFont(qFont);
 
-            Row titleRow = summarySheet.createRow(0);
-            Cell titleCell = titleRow.createCell(0);
-            titleCell.setCellValue("Anket Sonuç Raporu");
-            titleCell.setCellStyle(titleStyle);
-
-            Row infoRow1 = summarySheet.createRow(2);
-            infoRow1.createCell(0).setCellValue("Anket Adı");
-            infoRow1.createCell(1).setCellValue(surveyName);
-
-            Row infoRow2 = summarySheet.createRow(3);
-            infoRow2.createCell(0).setCellValue("Açıklama");
-            infoRow2.createCell(1).setCellValue(surveyDescription != null ? surveyDescription : "-");
-
-            Row infoRow3 = summarySheet.createRow(4);
-            infoRow3.createCell(0).setCellValue("Grafik Görünümü");
-            infoRow3.createCell(1).setCellValue(selectedView);
-
-            Row overviewHeader = summarySheet.createRow(6);
-            String[] overviewHeaders = {"Soru", "Soru Türü", "Toplam Yanıt", "Katılımcı Sayısı", "İstatistik"};
-            for (int i = 0; i < overviewHeaders.length; i++) {
-                Cell cell = overviewHeader.createCell(i);
-                cell.setCellValue(overviewHeaders[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            Set<String> uniqueParticipants = new HashSet<>();
-            for (ParticipationService.AnswerDto answer : answers) {
-                if (answer.getParticipantName() != null && !answer.getParticipantName().isBlank()) {
-                    uniqueParticipants.add(answer.getParticipantName());
-                }
-            }
-
-            int rowIndex = 7;
+            int rowIndex = 0;
+            
             for (QuestionService.QuestionDto question : questions) {
-                List<ParticipationService.AnswerDto> qAnswers = new ArrayList<>();
-                for (ParticipationService.AnswerDto answer : answers) {
-                    if (Objects.equals(answer.getQuestionId(), question.getId())) {
-                        qAnswers.add(answer);
-                    }
-                }
+                // Soru başlığını yaz
+                Row qRow = sheet.createRow(rowIndex++);
+                Cell qCell = qRow.createCell(0);
+                qCell.setCellValue("SORU: " + question.getText());
+                qCell.setCellStyle(questionTitleStyle);
+                rowIndex++; // Bir satır boşluk bırak
 
-                Row row = summarySheet.createRow(rowIndex++);
-                row.createCell(0).setCellValue(question.getText());
-                row.createCell(1).setCellValue(question.getType());
-                row.createCell(2).setCellValue(qAnswers.size());
+                // Tablo başlıkları
+                Row tableHeaderRow = sheet.createRow(rowIndex++);
+                tableHeaderRow.createCell(0).setCellValue("Katılımcı");
+                tableHeaderRow.createCell(1).setCellValue("Verilen Yanıt");
+                for(int i=0; i<2; i++) tableHeaderRow.getCell(i).setCellStyle(headerStyle);
 
-                Set<String> names = new HashSet<>();
-                for (ParticipationService.AnswerDto answer : qAnswers) {
-                    if (answer.getParticipantName() != null && !answer.getParticipantName().isBlank()) {
-                        names.add(answer.getParticipantName());
-                    }
-                }
-                row.createCell(3).setCellValue(names.size());
-                row.createCell(4).setCellValue(selectedView);
-            }
+                // Cevapları yaz
+                List<ParticipationService.AnswerDto> qAnswers = answers.stream()
+                        .filter(a -> Objects.equals(a.getQuestionId(), question.getId()))
+                        .collect(Collectors.toList());
 
-            for (int i = 0; i < overviewHeaders.length; i++) {
-                summarySheet.autoSizeColumn(i);
-            }
-
-            for (int i = 0; i < questions.size(); i++) {
-                QuestionService.QuestionDto question = questions.get(i);
-                List<ParticipationService.AnswerDto> qAnswers = new ArrayList<>();
-                for (ParticipationService.AnswerDto answer : answers) {
-                    if (Objects.equals(answer.getQuestionId(), question.getId())) {
-                        qAnswers.add(answer);
-                    }
-                }
-
-                Sheet questionSheet = workbook.createSheet("Soru " + (i + 1));
-                questionSheet.setColumnWidth(0, 36 * 256);
-                questionSheet.setColumnWidth(1, 18 * 256);
-                questionSheet.setColumnWidth(2, 18 * 256);
-                questionSheet.setColumnWidth(3, 30 * 256);
-
-                Row questionTitleRow = questionSheet.createRow(0);
-                Cell questionTitleCell = questionTitleRow.createCell(0);
-                questionTitleCell.setCellValue("Soru: " + question.getText());
-                questionTitleCell.setCellStyle(titleStyle);
-
-                Row questionMetaRow = questionSheet.createRow(2);
-                questionMetaRow.createCell(0).setCellValue("Soru Türü");
-                questionMetaRow.createCell(1).setCellValue(question.getType());
-                questionMetaRow.createCell(2).setCellValue("Görünüm");
-                questionMetaRow.createCell(3).setCellValue(selectedView);
-
-                Row optionHeader = questionSheet.createRow(4);
-                for (int j = 0; j < 4; j++) {
-                    Cell cell = optionHeader.createCell(j);
-                    cell.setCellStyle(headerStyle);
-                }
-                optionHeader.getCell(0).setCellValue("Seçenek");
-                optionHeader.getCell(1).setCellValue("Oy Sayısı");
-                optionHeader.getCell(2).setCellValue("Yüzde");
-                optionHeader.getCell(3).setCellValue("Görsel Gösterim");
-
-                Map<String, Integer> optionCounts = new HashMap<>();
-                for (ParticipationService.AnswerDto answer : qAnswers) {
-                    if (answer.getAnswerText() != null && !answer.getAnswerText().isBlank()) {
-                        optionCounts.put(answer.getAnswerText(), optionCounts.getOrDefault(answer.getAnswerText(), 0) + 1);
-                    }
-                }
-
-                List<Map.Entry<String, Integer>> entries = new ArrayList<>(optionCounts.entrySet());
-                int maxCount = entries.stream().mapToInt(Map.Entry::getValue).max().orElse(1);
-                int rowNumber = 5;
-                String visualMarker = "Sütun Grafik".equals(selectedView) ? "█" : "●";
-
-                if (entries.isEmpty()) {
-                    Row emptyRow = questionSheet.createRow(rowNumber);
-                    emptyRow.createCell(0).setCellValue("Henüz cevap yok");
-                    emptyRow.createCell(1).setCellValue(0);
-                    emptyRow.createCell(2).setCellValue("0%");
-                    emptyRow.createCell(3).setCellValue("-");
+                if (qAnswers.isEmpty()) {
+                    Row row = sheet.createRow(rowIndex++);
+                    row.createCell(0).setCellValue("-");
+                    row.createCell(1).setCellValue("Henüz yanıt yok");
                 } else {
-                    for (Map.Entry<String, Integer> entry : entries) {
-                        int count = entry.getValue();
-                        double percentage = qAnswers.isEmpty() ? 0.0 : (count * 100.0) / qAnswers.size();
-                        Row row = questionSheet.createRow(rowNumber++);
-                        row.createCell(0).setCellValue(entry.getKey());
-                        row.createCell(1).setCellValue(count);
-                        row.createCell(2).setCellValue(String.format(Locale.US, "%.1f%%", percentage));
-
-                        String visual = visualMarker;
-                        int repeatCount = Math.max(1, (int) Math.round((count * 20.0) / Math.max(1, maxCount)));
-                        if ("Sütun Grafik".equals(selectedView)) {
-                            visual = "█".repeat(repeatCount);
-                        } else if ("Daire Grafik".equals(selectedView)) {
-                            visual = "●".repeat(repeatCount);
-                        } else {
-                            visual = "-";
-                        }
-                        row.createCell(3).setCellValue(visual);
+                    for (ParticipationService.AnswerDto answer : qAnswers) {
+                        Row row = sheet.createRow(rowIndex++);
+                        row.createCell(0).setCellValue(answer.getParticipantName() != null ? answer.getParticipantName() : "Anonim");
+                        row.createCell(1).setCellValue(answer.getAnswerText() != null ? answer.getAnswerText() : "-");
                     }
                 }
-
-                if ("Sütun Grafik".equals(selectedView) || "Daire Grafik".equals(selectedView)) {
-                    CellStyle visualStyle = workbook.createCellStyle();
-                    visualStyle.setAlignment(HorizontalAlignment.LEFT);
-                    visualStyle.setWrapText(true);
-                    Font visualFont = workbook.createFont();
-                    visualFont.setBold(true);
-                    visualFont.setColor(IndexedColors.BLUE.getIndex());
-                    visualStyle.setFont(visualFont);
-
-                    for (int r = 5; r < rowNumber; r++) {
-                        Cell cell = questionSheet.getRow(r).getCell(3);
-                        if (cell != null) {
-                            cell.setCellStyle(visualStyle);
-                        }
-                    }
-                }
-
-                for (int col = 0; col < 4; col++) {
-                    questionSheet.autoSizeColumn(col);
-                }
+                
+                rowIndex += 2; // Bir sonraki soruya geçmeden önce iki satır boşluk bırak
             }
+
+            // Sütun genişliklerini ayarla
+            sheet.setColumnWidth(0, 30 * 256);
+            sheet.setColumnWidth(1, 50 * 256);
 
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
 
             StreamResource resource = new StreamResource(
-                    "anket-sonuclari-" + surveyId + ".xlsx",
+                    "" + surveyName.replaceAll("[^a-zA-Z0-9]", "_") + ".xlsx",
                     () -> new ByteArrayInputStream(outputStream.toByteArray())
             );
-            resource.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-
+            
             Anchor downloadLink = new Anchor(resource, "");
             downloadLink.getElement().setAttribute("download", true);
-            Button exportButton = new Button("İndir", new Icon(VaadinIcon.DOWNLOAD));
-            exportButton.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-            downloadLink.add(exportButton);
+            downloadLink.getStyle().set("display", "none");
             add(downloadLink);
             downloadLink.getElement().callJsFunction("click");
-            Notification.show("Excel dosyası indiriliyor.", 2000, Notification.Position.TOP_END);
+            
+            Notification.show("Sonuçlar düzenli tablo formatında indiriliyor.", 2000, Notification.Position.TOP_END);
         } catch (IOException e) {
-            Notification.show("Excel dışa aktarımı sırasında hata oluştu.", 3000, Notification.Position.MIDDLE);
+            Notification.show("Excel oluşturulurken bir hata oluştu.", 3000, Notification.Position.MIDDLE);
         }
     }
 
