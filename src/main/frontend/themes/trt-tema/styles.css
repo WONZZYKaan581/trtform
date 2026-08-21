@@ -1,0 +1,26 @@
+/* --- TRT KURUMSAL MODERN TEMA & KARANLIK MOD DESTEĞİ --- */
+:root {
+  --lumo-primary-color: #E30613;
+  --lumo-primary-text-color: #E30613;
+  background-color: var(--lumo-base-color);
+}
+
+/* Kurumsal Üst Şerit (Header) Tasarımı */
+.trt-header {
+  background-color: #1a1a1a;
+  color: white;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  width: 100%;
+}
+
+/* Kartlar için Modern Gölgelendirme */
+.modern-card {
+  background: var(--lumo-base-color);
+  border-radius: 12px;
+  box-shadow: var(--lumo-box-shadow-m);
+  padding: 30px;
+}

@@ -1,0 +1,1 @@
+Image trtLogo = new Image("images/trt-logo.png", "TRT Logo");

@@ -4,6 +4,7 @@ import com.example.trtform.service.UserService;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.H2;
+import com.vaadin.flow.component.html.Image; // LOGO İÇİN EKLENDİ
 import com.vaadin.flow.component.icon.Icon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.notification.Notification;
@@ -39,8 +40,13 @@ public class LoginView extends VerticalLayout {
         formCard.setSpacing(true);
         formCard.setAlignItems(Alignment.STRETCH);
 
+        // --- TRT LOGOSU ---
+        Image trtLogo = new Image("images/trt-logo.png", "TRT Kurumsal Logo");
+        trtLogo.setWidth("150px");
+        formCard.setAlignSelf(Alignment.CENTER, trtLogo); // Logoyu kartın ortasına hizala
+
         // Başlık
-        H2 title = new H2("🔐 Giriş Yap");
+        H2 title = new H2("Giriş Yap"); // İkonu kaldırdık çünkü üstünde kurumsal logo var
         title.getStyle().set("text-align", "center");
         title.getStyle().set("margin-top", "0");
         title.getStyle().set("margin-bottom", "20px");
@@ -89,8 +95,8 @@ public class LoginView extends VerticalLayout {
         registerButton.addThemeVariants(ButtonVariant.LUMO_TERTIARY);
         registerButton.setWidthFull();
 
-        // Elemanları Karta Ekle
-        formCard.add(title, usernameField, passwordField, loginButton, registerButton);
+        // Elemanları Karta Ekle (trtLogo en başa eklendi)
+        formCard.add(trtLogo, title, usernameField, passwordField, loginButton, registerButton);
         add(formCard);
     }
 }
