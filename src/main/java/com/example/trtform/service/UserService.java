@@ -2,6 +2,7 @@ package com.example.trtform.service;
 
 import com.example.trtform.model.User;
 import com.example.trtform.repository.UserRepository;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder; // 1. YENİ EKLENDİ
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -13,9 +14,11 @@ public class UserService {
 
     private final UserRepository userRepository;
     private static String loggedInUser = null;
+    private final BCryptPasswordEncoder passwordEncoder; // 2. YENİ EKLENDİ
 
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
+        this.passwordEncoder = new BCryptPasswordEncoder(); // Şifreleme aracımızı başlattık
     }
 
     public boolean register(String username, String password, String firstName, String lastName) {
@@ -26,7 +29,10 @@ public class UserService {
         boolean firstUser = userRepository.count() == 0;
         User newUser = new User();
         newUser.setUsername(username);
-        newUser.setPassword(password);
+        
+        // 3. DEĞİŞİKLİK: Şifreyi doğrudan değil, şifreleyerek (hash) kaydediyoruz
+        newUser.setPassword(passwordEncoder.encode(password)); 
+        
         newUser.setFull_name(firstName + " " + lastName);
         newUser.setRole(firstUser || "admin".equalsIgnoreCase(username) ? "ADMIN" : "USER");
 
@@ -36,7 +42,9 @@ public class UserService {
 
     public boolean login(String username, String password) {
         User user = userRepository.findByUsername(username);
-        if (user != null && user.getPassword().equals(password)) {
+        
+        // 4. DEĞİŞİKLİK: Dışarıdan girilen şifre ile veritabanındaki karmaşık şifreyi kıyaslıyoruz
+        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
             loggedInUser = username;
             return true;
         }
