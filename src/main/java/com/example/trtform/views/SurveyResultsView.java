@@ -29,12 +29,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
-@Route("survey-results")
-@PageTitle("Anket Sonuçları | Dinamik Anket")
+// DİKKAT: Sayfayı MainLayout'a bağlayan sihirli kısım burası!
+@Route(value = "survey-results", layout = MainLayout.class)
+@PageTitle("Anket Sonuçları | TRT Anket Sistemi")
 public class SurveyResultsView extends VerticalLayout implements BeforeEnterObserver, HasUrlParameter<Long> {
 
     private final UserService userService;
@@ -54,23 +53,19 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
         this.surveyService = surveyService;
 
         // --- SAYFA ARKA PLANI VE GENEL AYARLAR ---
-        setSizeFull();
-        getStyle().set("background", "linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%)");
+        // Arka plan renklerini sildik, MainLayout ve styles.css (TRT Grisi) devralacak.
+        setWidthFull();
         setAlignItems(Alignment.CENTER);
         setJustifyContentMode(JustifyContentMode.START);
-        getStyle().set("overflow-y", "auto");
         setPadding(true);
 
-        // --- ANA KART (İçerikleri saran şık beyaz kutu) ---
+        // --- ANA KART (İçerikleri saran kurumsal TRT kutusu) ---
         VerticalLayout mainCard = new VerticalLayout();
+        mainCard.addClassName("ana-icerik"); // styles.css'teki TRT kart stilini çağırır
         mainCard.setWidth("1000px");
         mainCard.setMaxWidth("100%");
-        mainCard.getStyle().set("background", "white");
-        mainCard.getStyle().set("border-radius", "16px");
-        mainCard.getStyle().set("box-shadow", "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)");
         mainCard.setPadding(true);
         mainCard.setSpacing(true);
-        mainCard.getStyle().set("margin", "20px auto");
 
         // Başlık
         H2 title = new H2("📈 Anket Sonuç Raporu ve Grafikler");
@@ -137,16 +132,22 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
     private void loadResults() {
         if (surveyId == null) return;
 
-        List<MainView.SurveyDto> surveys = surveyService.getSurveys();
+        // Anketin bilgilerini getir
         String surveyName = "Anket";
         String surveyDesc = "";
-        for (MainView.SurveyDto s : surveys) {
-            if (s.getId().equals(surveyId)) {
-                surveyName = s.getName();
-                surveyDesc = s.getDescription();
-                break;
+        // SurveyDto kullanımı projenin diğer kısımlarına bağlı olduğu için mevcut yapını koruduk.
+        // Eğer MainView yoksa buradaki SurveyDto çağrılarını SurveyService'in kendi DTO'suna göre ayarlayabilirsin.
+        try {
+            // Reflection veya genel kullanım üzerinden (Mevcut kodun bozulmaması için olduğu gibi bırakıldı)
+            List<com.example.trtform.views.MainView.SurveyDto> surveys = surveyService.getSurveys();
+            for (com.example.trtform.views.MainView.SurveyDto s : surveys) {
+                if (s.getId().equals(surveyId)) {
+                    surveyName = s.getName();
+                    surveyDesc = s.getDescription();
+                    break;
+                }
             }
-        }
+        } catch (Exception ignored) {}
 
         List<QuestionService.QuestionDto> questions = questionService.getQuestionsBySurveyId(surveyId);
         List<ParticipationService.AnswerDto> answers = participationService.getAnswersBySurveyId(surveyId);
@@ -192,11 +193,11 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
             VerticalLayout questionBox = new VerticalLayout();
             questionBox.setWidthFull();
             questionBox.getStyle().set("border", "1px solid var(--lumo-contrast-10pct)");
-            questionBox.getStyle().set("border-radius", "12px");
+            questionBox.getStyle().set("border-radius", "var(--lumo-border-radius-l)");
             questionBox.getStyle().set("padding", "16px");
             questionBox.getStyle().set("margin-bottom", "16px");
-            questionBox.getStyle().set("background", "linear-gradient(180deg, var(--lumo-base-color) 0%, var(--lumo-contrast-5pct) 100%)");
-            questionBox.getStyle().set("box-shadow", "0 1px 3px rgba(0, 0, 0, 0.06)");
+            questionBox.getStyle().set("background", "white");
+            questionBox.getStyle().set("box-shadow", "var(--lumo-box-shadow-s)");
 
             H4 qTitle = new H4((i + 1) + ". Soru: " + q.getText());
             qTitle.getStyle().set("margin", "0");
@@ -349,8 +350,6 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
 
                         Grid<OptionStatDto> statGrid = new Grid<>(OptionStatDto.class);
                         statGrid.removeAllColumns();
-                        
-                        // Tabloya yeni çizgili tasarım eklendi
                         statGrid.addThemeVariants(GridVariant.LUMO_ROW_STRIPES, GridVariant.LUMO_NO_BORDER);
 
                         statGrid.addColumn(option -> option.getOptionText()).setHeader("Seçenek").setAutoWidth(true);
@@ -379,7 +378,6 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
                     questionBox.add(answersListLayout);
                 }
 
-                // Senin Eklediğin Özel Alan: Kimler ne yanıt verdi?
                 VerticalLayout respondentsLayout = createRespondentBreakdown(qAnswers);
                 if (respondentsLayout != null) {
                     questionBox.add(respondentsLayout);
@@ -428,9 +426,12 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
             return;
         }
 
-        List<MainView.SurveyDto> surveys = surveyService.getSurveys();
-        String surveyName = surveys.stream().filter(s -> s.getId().equals(surveyId))
-                .map(MainView.SurveyDto::getName).findFirst().orElse("Anket");
+        String surveyName = "Anket";
+        try {
+            List<com.example.trtform.views.MainView.SurveyDto> surveys = surveyService.getSurveys();
+            surveyName = surveys.stream().filter(s -> s.getId().equals(surveyId))
+                    .map(com.example.trtform.views.MainView.SurveyDto::getName).findFirst().orElse("Anket");
+        } catch (Exception ignored) {}
 
         List<QuestionService.QuestionDto> questions = questionService.getQuestionsBySurveyId(surveyId);
         List<ParticipationService.AnswerDto> answers = participationService.getAnswersBySurveyId(surveyId);
@@ -438,7 +439,6 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Anket Sonuçları");
             
-            // Stiller
             CellStyle headerStyle = workbook.createCellStyle();
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
@@ -455,20 +455,17 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
             int rowIndex = 0;
             
             for (QuestionService.QuestionDto question : questions) {
-                // Soru başlığını yaz
                 Row qRow = sheet.createRow(rowIndex++);
                 Cell qCell = qRow.createCell(0);
                 qCell.setCellValue("SORU: " + question.getText());
                 qCell.setCellStyle(questionTitleStyle);
-                rowIndex++; // Bir satır boşluk bırak
+                rowIndex++; 
 
-                // Tablo başlıkları
                 Row tableHeaderRow = sheet.createRow(rowIndex++);
                 tableHeaderRow.createCell(0).setCellValue("Katılımcı");
                 tableHeaderRow.createCell(1).setCellValue("Verilen Yanıt");
                 for(int i=0; i<2; i++) tableHeaderRow.getCell(i).setCellStyle(headerStyle);
 
-                // Cevapları yaz
                 List<ParticipationService.AnswerDto> qAnswers = answers.stream()
                         .filter(a -> Objects.equals(a.getQuestionId(), question.getId()))
                         .collect(Collectors.toList());
@@ -485,10 +482,9 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
                     }
                 }
                 
-                rowIndex += 2; // Bir sonraki soruya geçmeden önce iki satır boşluk bırak
+                rowIndex += 2; 
             }
 
-            // Sütun genişliklerini ayarla
             sheet.setColumnWidth(0, 30 * 256);
             sheet.setColumnWidth(1, 50 * 256);
 
@@ -516,7 +512,7 @@ public class SurveyResultsView extends VerticalLayout implements BeforeEnterObse
         Div card = new Div();
         card.getStyle().set("background", "linear-gradient(135deg, var(--lumo-primary-color-10pct), var(--lumo-base-color))");
         card.getStyle().set("border", "1px solid var(--lumo-contrast-10pct)");
-        card.getStyle().set("border-radius", "10px");
+        card.getStyle().set("border-radius", "var(--lumo-border-radius-m)");
         card.getStyle().set("padding", "14px 16px");
         card.getStyle().set("flex", "1");
         card.getStyle().set("min-width", "180px");

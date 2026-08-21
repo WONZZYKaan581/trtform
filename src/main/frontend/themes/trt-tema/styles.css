@@ -1,26 +1,31 @@
-/* --- TRT KURUMSAL MODERN TEMA & KARANLIK MOD DESTEĞİ --- */
+/* --- TRT KURUMSAL BEYAZ TEMA & KESKİN HATLARI --- */
 :root {
-  --lumo-primary-color: #E30613;
+  --lumo-primary-color: #E30613; /* TRT Kırmızısı */
   --lumo-primary-text-color: #E30613;
-  background-color: var(--lumo-base-color);
+  --lumo-base-color: #ffffff;
+  
+  /* Portalın arka planı için açık ve ferah bir gri */
+  --lumo-tint-5pct: #f4f5f7; 
+  
+  /* Vaadin'in yuvarlak hatlarını kurumsal keskin köşelere çeviriyoruz */
+  --lumo-border-radius-m: 4px;
+  --lumo-border-radius-l: 6px;
+  
+  /* Hafif, yormayan gölgelendirme (Derinlik) */
+  --lumo-box-shadow-s: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --lumo-box-shadow-m: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Kurumsal Üst Şerit (Header) Tasarımı */
-.trt-header {
-  background-color: #1a1a1a;
-  color: white;
-  padding: 12px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  width: 100%;
+/* Tüm sayfanın arka planını kurumsal gri yapma */
+html {
+  background-color: var(--lumo-tint-5pct);
 }
 
-/* Kartlar için Modern Gölgelendirme */
-.modern-card {
-  background: var(--lumo-base-color);
-  border-radius: 12px;
+/* Çalışma alanındaki formların ve kartların arka planını beyaz, kurumsal yapma */
+.ana-icerik {
+  background: white;
+  border-radius: var(--lumo-border-radius-l);
   box-shadow: var(--lumo-box-shadow-m);
-  padding: 30px;
+  padding: 24px;
+  margin-top: 20px;
 }
